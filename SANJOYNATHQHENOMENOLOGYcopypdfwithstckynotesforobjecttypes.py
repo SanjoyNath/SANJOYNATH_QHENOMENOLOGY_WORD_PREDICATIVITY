@@ -1,0 +1,61 @@
+import fitz  # PyMuPDF
+import tkinter as tk
+from tkinter import filedialog
+
+def add_annotations_to_pdf(input_pdf_path, output_pdf_path):
+    # Open the input PDF
+    doc = fitz.open(input_pdf_path)
+    
+    for page_num in range(len(doc)):
+        page = doc.load_page(page_num)
+        
+        # Add circles around objects
+        for block in page.get_text("dict")["blocks"]:
+            try:
+                if block["type"] == 0:  # Text block
+                    for line in block["lines"]:
+                        for span in line["spans"]:
+                            bbox = span["bbox"]
+                            rect = fitz.Rect(bbox)
+                            if rect.is_infinite or rect.is_empty:
+                                continue
+                            page.draw_circle(rect.tl, rect.width / 2, color=(1, 0, 0), fill=None, width=1)
+                            annot = page.add_freetext_annot(rect.tl, "Text Object", fontsize=8, fontname="helv")
+                            annot.set_colors(stroke=(0, 0, 1))
+                elif block["type"] == 1:  # Image block
+                    bbox = block["bbox"]
+                    rect = fitz.Rect(bbox)
+                    if rect.is_infinite or rect.is_empty:
+                        continue
+                    page.draw_circle(rect.tl, rect.width / 2, color=(0, 1, 0), fill=None, width=1)
+                    annot = page.add_freetext_annot(rect.tl, "Image Object", fontsize=8, fontname="helv")
+                    annot.set_colors(stroke=(0, 0, 1))
+                elif block["type"] == 2:  # Drawing block
+                    bbox = block["bbox"]
+                    rect = fitz.Rect(bbox)
+                    if rect.is_infinite or rect.is_empty:
+                        continue
+                    page.draw_circle(rect.tl, rect.width / 2, color=(0, 0, 1), fill=None, width=1)
+                    annot = page.add_freetext_annot(rect.tl, "Drawing Object", fontsize=8, fontname="helv")
+                    annot.set_colors(stroke=(0, 0, 1))
+            except Exception as e:
+                print(f"Error processing block on Page {page_num + 1}: {e}")
+    
+    # Save the output PDF
+    doc.save(output_pdf_path)
+
+def main():
+    root = tk.Tk()
+    root.withdraw()
+    
+    # Open file dialog to select PDF file
+    input_pdf_path = filedialog.askopenfilename(title="Select PDF file", filetypes=[("PDF files", "*.pdf")])
+    
+    if input_pdf_path:
+        output_pdf_path = input_pdf_path+"___annotated_saan_done.pdf"######filedialog.asksaveasfilename(title="Save Annotated PDF as", defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
+        if output_pdf_path:
+            add_annotations_to_pdf(input_pdf_path, output_pdf_path)
+            print(f"Annotated PDF saved as {output_pdf_path}")
+
+if __name__ == "__main__":
+    main()
