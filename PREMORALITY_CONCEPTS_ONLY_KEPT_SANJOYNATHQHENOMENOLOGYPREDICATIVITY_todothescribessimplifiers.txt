@@ -1,0 +1,190 @@
+     public PUBLIC_CLASS_EDGE_FOR_KO_BLOCKS(double x1,double y1,double x2,double y2,double start_side_small_corner_segment_length, double final_side_small_corner_segment_length , double small_intermediate_segments_length,double gap_from_final_of_previous_segment_to_start_of_next_segment)
+        {
+            ////////////////////////////////////////////////////////////////////////////////////////////////
+            DXF_NC_TOOL_SOL
+               .ClassFOR_DSTV_SCRIBE_CORRECTIONS
+               .PUBLIC_STATIC_STRINGBUILDER___TO_REPORT_FILE_WISE_ONLY_SCRIBES_CORRECTIONS_DATA
+               .AppendLine
+               (
+                "=================="
+                + "\r\n ENTERED INSIDE  THE CONSTRUCTOR FOR   public PUBLIC_CLASS_EDGE_FOR_KO_BLOCKS"
+                + "\r\ncoordinates of current scribes edges ="
+                + x1 + "   ,   " + y1 + "   ,   " + x2 + "   ,   " + y2 + "   ,   "
+                 + "\r\nstart_side_small_corner_segment_length = " + start_side_small_corner_segment_length
+                  + "\r\nfinal_side_small_corner_segment_length =  " + final_side_small_corner_segment_length
+                  + "\r\nsmall_intermediate_segments_length = " + small_intermediate_segments_length
+                    + "\r\ngap_from_final_of_previous_segment_to_start_of_next_segment =  " + gap_from_final_of_previous_segment_to_start_of_next_segment
+                );
+            ////////////////////////////////////////////////////////////////////////////////////////////////
+            this.x1 = x1;
+            this.y1 = y1 ;
+            this.x2 = x2;
+            this.y2 = y2;
+            this.length = Math.Sqrt( ((x2-x1) * (x2 - x1)) + ((y2-y1) * (y2 - y1)) );
+            this.length = Math.Max(Double.MinValue, this.length);
+            this.intermittentSegments_points_as_Tupule_list = new List<Tuple<double, double>>();
+            this.intermittentSegments_points_as_Tupule_list.Clear();
+            this.unit_vector_x = (x2 - x1)/ this.length ;
+            this.unit_vector_y = (y2-y1) / this.length;
+            this.___temp_current_small_intermediate_partial_scribes_start_x = 0;/// flushing first
+            this.___temp_current_small_intermediate_partial_scribes_start_y = 0;/// flushing first
+            this.___temp_current_small_intermediate_partial_scribes_final_x = 0;/// flushing first
+            this.___temp_current_small_intermediate_partial_scribes_final_y = 0;/// flushing first
+            this.___temp_remaining_length_afterr_current_partial_scribing_done = 0;/// flushing first
+            ////// double start_side_small_corner_segment_length
+            //////, double final_side_small_corner_segment_length
+            //////, double small_intermediate_segments_length
+            //////,double gap_from_final_of_previous_segment_to_start_of_next_segment
+            /// flushing every time
+            this.___temp_current_small_intermediate_partial_scribes_start_x = x1;
+            this.___temp_current_small_intermediate_partial_scribes_start_y = y1;
+            this.___temp_current_small_intermediate_partial_scribes_final_x = x1+ (this.unit_vector_x * start_side_small_corner_segment_length);
+            this.___temp_current_small_intermediate_partial_scribes_final_y = y1 + (this.unit_vector_y * start_side_small_corner_segment_length);
+            ///  intermittentSegments.Add(new Tuple<double, double>(x1, y1));
+            this.intermittentSegments_points_as_Tupule_list
+                .Add
+                (
+                new Tuple<double, double>
+                (
+                  this.___temp_current_small_intermediate_partial_scribes_start_x
+                ,
+                  this.___temp_current_small_intermediate_partial_scribes_start_y
+                )
+                );
+            this.intermittentSegments_points_as_Tupule_list
+                .Add
+                (
+                new Tuple<double, double>
+                (
+                  this.___temp_current_small_intermediate_partial_scribes_final_x
+                ,
+                  this.___temp_current_small_intermediate_partial_scribes_final_y
+                )
+                );
+            /// first start side small corner partial scribing segment is added to tupule
+            this.___temp_remaining_length_afterr_current_partial_scribing_done
+                =
+                this.length
+                -
+                start_side_small_corner_segment_length;
+            //////////////////////////////////////////////////////////////////////////////////////
+            int ______________temp_only_counter_for_only_non_corner_small_partial_scribes_necessary = 0;
+            ______________temp_only_counter_for_only_non_corner_small_partial_scribes_necessary
+                =
+                (int)
+                (
+                (
+                this.length
+                -
+                start_side_small_corner_segment_length
+                -
+                final_side_small_corner_segment_length
+                )
+                /
+                (
+                small_intermediate_segments_length
+                +
+                gap_from_final_of_previous_segment_to_start_of_next_segment
+                )
+                )
+                ;
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+            ______________temp_only_counter_for_only_non_corner_small_partial_scribes_necessary
+                =
+                  ______________temp_only_counter_for_only_non_corner_small_partial_scribes_necessary
+                  - 1
+                  ;
+            //////////////////////////////////////////////////////////////////////////////////////////////////////
+            /////////////////////////////////////////////////////////////////////////
+            if(______________temp_only_counter_for_only_non_corner_small_partial_scribes_necessary>2)
+            {
+           for(int iterator_for_intermediate_partial_scribes=0; iterator_for_intermediate_partial_scribes < ______________temp_only_counter_for_only_non_corner_small_partial_scribes_necessary; iterator_for_intermediate_partial_scribes++)
+                {
+                    ////// double start_side_small_corner_segment_length
+                    //////, double final_side_small_corner_segment_length
+                    //////, double small_intermediate_segments_length
+                    //////,double gap_from_final_of_previous_segment_to_start_of_next_segment
+                    this.___temp_current_small_intermediate_partial_scribes_start_x 
+                        =
+                        this.___temp_current_small_intermediate_partial_scribes_final_x
+                        + (this.unit_vector_x * gap_from_final_of_previous_segment_to_start_of_next_segment)
+                        ;
+                    this.___temp_current_small_intermediate_partial_scribes_start_y
+                        =
+                        this.___temp_current_small_intermediate_partial_scribes_final_y
+                        + (this.unit_vector_y * gap_from_final_of_previous_segment_to_start_of_next_segment)
+                        ;
+                    //////////////////////////////////////////////////////////////////////////////////////////////////
+                    this.___temp_current_small_intermediate_partial_scribes_final_x 
+                        =
+                        this.___temp_current_small_intermediate_partial_scribes_start_x
+                        + (this.unit_vector_x * small_intermediate_segments_length)
+                        ;
+                    this.___temp_current_small_intermediate_partial_scribes_final_y
+                        =
+                        this.___temp_current_small_intermediate_partial_scribes_start_y
+                        + 
+                        (this.unit_vector_y * small_intermediate_segments_length)
+                        ;
+                    //////////////////////////////////////////////////////////////////////////////////////
+                    //////////////////////////////////////////////////////////////////////////////////////
+                    //////////////////////////////////////////////////////////////////////////////////////
+                    this.intermittentSegments_points_as_Tupule_list
+                        .Add
+                        (
+                        new Tuple<double, double>
+                        (
+                          this.___temp_current_small_intermediate_partial_scribes_start_x
+                        ,
+                          this.___temp_current_small_intermediate_partial_scribes_start_y
+                        )
+                        );
+                    this.intermittentSegments_points_as_Tupule_list
+                        .Add
+                        (
+                        new Tuple<double, double>
+                        (
+                          this.___temp_current_small_intermediate_partial_scribes_final_x
+                        ,
+                          this.___temp_current_small_intermediate_partial_scribes_final_y
+                        )
+                        );
+                    //////////////////////////////////////////////////////////////////////////////////////
+                    //////////////////////////////////////////////////////////////////////////////////////
+                    //////////////////////////////////////////////////////////////////////////////////////
+                }// for(int iterator_for_intermediate_partial_scribes=0; iterator_for_intermediate_partial_scribes < ______________temp_only_counter_for_only_non_corner_small_partial_scribes_necessary; iterator_for_intermediate_partial_scribes++)
+            }//if(______________temp_only_counter_for_only_non_corner_small_partial_scribes_necessary>2)
+            //////////////////////////////////// final side corner scribing is done and is added  after for loop is done for all intermediate scribes of partial scribes
+            //////////////////////////////////// final side corner scribing is done and is added  after for loop is done for all intermediate scribes of partial scribes
+            //////////////////////////////////// final side corner scribing is done and is added  after for loop is done for all intermediate scribes of partial scribes
+            ////// double start_side_small_corner_segment_length
+            //////, double final_side_small_corner_segment_length
+            //////, double small_intermediate_segments_length
+            //////,double gap_from_final_of_previous_segment_to_start_of_next_segment
+            /// flushing every time
+            this.___temp_current_small_intermediate_partial_scribes_start_x = x2 - (this.unit_vector_x * final_side_small_corner_segment_length);
+            this.___temp_current_small_intermediate_partial_scribes_start_y = y2 - (this.unit_vector_y * final_side_small_corner_segment_length);
+            this.___temp_current_small_intermediate_partial_scribes_final_x = x2;
+            this.___temp_current_small_intermediate_partial_scribes_final_y = y2 ;
+            ///  intermittentSegments.Add(new Tuple<double, double>(x1, y1));
+            this.intermittentSegments_points_as_Tupule_list
+                .Add
+                (
+                new Tuple<double, double>
+                (
+                  this.___temp_current_small_intermediate_partial_scribes_start_x
+                ,
+                  this.___temp_current_small_intermediate_partial_scribes_start_y
+                )
+                );
+            this.intermittentSegments_points_as_Tupule_list
+                .Add
+                (
+                new Tuple<double, double>
+                (
+                  this.___temp_current_small_intermediate_partial_scribes_final_x
+                ,
+                  this.___temp_current_small_intermediate_partial_scribes_final_y
+                )
+                );
+        }//public PUBLIC_CLASS_EDGE_FOR_KO_BLOCKS(double x1,double y1,double x2,double y2)
