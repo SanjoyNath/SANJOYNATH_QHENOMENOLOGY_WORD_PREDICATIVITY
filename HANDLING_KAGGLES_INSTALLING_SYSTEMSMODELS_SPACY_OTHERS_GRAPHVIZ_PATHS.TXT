@@ -1,0 +1,902 @@
+157 words vectors   https://fasttext.cc/docs/en/crawl-vectors.html
+kaggle pos taggs for each sentences        157 words vectors   https://fasttext.cc/docs/en/crawl-vectors.html
+i need the parse tree for every sentence in a text file and i want to understand the relatedness of POS categories(Wordsnet or extensive pos categories) to understand which concept depends upon what other concept in the document... what are pretrained https://www.kaggle.com/models/ there???
+Copilot said:
+To generate parse trees for every sentence in a text file and understand the relatedness of POS categories, you can use pre-trained models available on Kaggle and other platforms. Here are some steps and tools you can use:
+Step-by-Step Guide
+1.	Install Necessary Libraries:
+•	Ensure you have the required libraries installed. You can use NLTK, spaCy, or AllenNLP for parsing and POS tagging.
+•	Install the libraries using pip:
+•	pip install nltk spacy allennlp allennlp-models
+2.	Download Pre-trained Models:
+•	You can find pre-trained models on Kaggle for various NLP tasks. Here are some useful links:
+•	Kaggle Models
+•	POS Tagger BERT
+1
+3.	Generate Parse Trees and POS Tags:
+•	Use the following Python scripts to generate parse trees and POS tags for each sentence in a text file.
+Example Using NLTK
+Parse Trees with NLTK
+import nltk
+from nltk import pos_tag, word_tokenize
+from nltk.parse import CoreNLPParser
+# Download necessary NLTK data
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+# Initialize the Stanford CoreNLP parser
+parser = CoreNLPParser(url='http://localhost:9000')
+def parse_sentences(file_path):
+    with open(file_path, 'r') as file:
+        text = file.read()
+    sentences = nltk.sent_tokenize(text)
+    for sentence in sentences:
+        parse_tree = next(parser.raw_parse(sentence))
+        print(parse_tree)
+# Example usage
+parse_sentences('your_text_file.txt')
+POS Tagging with NLTK
+def pos_tag_sentences(file_path):
+    with open(file_path, 'r') as file:
+        text = file.read()
+    sentences = nltk.sent_tokenize(text)
+    for sentence in sentences:
+        tokens = word_tokenize(sentence)
+        pos_tags = pos_tag(tokens)
+        print(pos_tags)
+# Example usage
+pos_tag_sentences('your_text_file.txt')
+Example Using spaCy
+Parse Trees and POS Tags with spaCy
+import spacy
+# Load the spaCy model
+nlp = spacy.load("en_core_web_sm")
+def parse_and_pos_tag_sentences(file_path):
+    with open(file_path, 'r') as file:
+        text = file.read()
+    doc = nlp(text)
+    for sent in doc.sents:
+        print(f"Sentence: {sent.text}")
+        for token in sent:
+            print(f"{token.text} ({token.dep_}) -> {token.head.text} ({token.head.pos_})")
+        print("\n")
+# Example usage
+parse_and_pos_tag_sentences('your_text_file.txt')
+Example Using AllenNLP
+Parse Trees with AllenNLP
+from allennlp.predictors.predictor import Predictor
+import allennlp_models.structured_prediction
+# Load the AllenNLP constituency parser
+predictor = Predictor.from_path("https://storage.googleapis.com/allennlp-public-models/constituency-parser-2020.02.10.tar.gz")
+def parse_sentences(file_path):
+    with open(file_path, 'r') as file:
+        text = file.read()
+    sentences = text.split('\n')
+    for sentence in sentences:
+        if sentence.strip():
+            parse_tree = predictor.predict(sentence=sentence)
+            print(parse_tree['trees'])
+# Example usage
+parse_sentences('your_text_file.txt')
+Understanding Relatedness of POS Categories
+To understand the relatedness of POS categories, you can use WordNet or other extensive POS category datasets. You can analyze the dependencies and relationships between different POS tags using the parse trees and POS tags generated.
+Pre-trained Models on Kaggle
+You can explore various pre-trained models on Kaggle for NLP tasks, including POS tagging and parsing. Here are some useful links:
+•	Kaggle Models
+•	POS Tagger BERT
+1
+These tools and models should help you generate parse trees, POS tags, and analyze the relatedness of POS categories in your text file.
+C:\Users\Sanjoy Nath>pip install nltk spacy allennlp allennlp-models
+Defaulting to user installation because normal site-packages is not writeable
+Requirement already satisfied: nltk in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (3.9.1)
+Requirement already satisfied: spacy in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (3.7.6)
+Collecting allennlp
+  Using cached allennlp-2.10.1-py3-none-any.whl.metadata (21 kB)
+Collecting allennlp-models
+  Downloading allennlp_models-2.10.1-py3-none-any.whl.metadata (23 kB)
+Requirement already satisfied: click in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from nltk) (8.1.7)
+Requirement already satisfied: joblib in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from nltk) (1.4.2)
+Requirement already satisfied: regex>=2021.8.3 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from nltk) (2024.9.11)
+Requirement already satisfied: tqdm in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from nltk) (4.66.5)
+Requirement already satisfied: spacy-legacy<3.1.0,>=3.0.11 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy) (3.0.12)
+Requirement already satisfied: spacy-loggers<2.0.0,>=1.0.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy) (1.0.5)
+Requirement already satisfied: murmurhash<1.1.0,>=0.28.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy) (1.0.10)
+Requirement already satisfied: cymem<2.1.0,>=2.0.2 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy) (2.0.8)
+Requirement already satisfied: preshed<3.1.0,>=3.0.2 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy) (3.0.9)
+Requirement already satisfied: thinc<8.3.0,>=8.2.2 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy) (8.2.5)
+Requirement already satisfied: wasabi<1.2.0,>=0.9.1 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy) (1.1.3)
+Requirement already satisfied: srsly<3.0.0,>=2.4.3 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy) (2.4.8)
+Requirement already satisfied: catalogue<2.1.0,>=2.0.6 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy) (2.0.10)
+Requirement already satisfied: weasel<0.5.0,>=0.1.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy) (0.4.1)
+Requirement already satisfied: typer<1.0.0,>=0.3.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy) (0.12.5)
+Requirement already satisfied: requests<3.0.0,>=2.13.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy) (2.32.3)
+Requirement already satisfied: pydantic!=1.8,!=1.8.1,<3.0.0,>=1.7.4 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy) (2.9.2)
+Requirement already satisfied: jinja2 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy) (3.1.4)
+Requirement already satisfied: setuptools in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy) (75.6.0)
+Requirement already satisfied: packaging>=20.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy) (24.1)
+Requirement already satisfied: langcodes<4.0.0,>=3.2.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy) (3.4.0)
+Requirement already satisfied: numpy>=1.19.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy) (1.26.4)
+INFO: pip is looking at multiple versions of allennlp to determine which version is compatible with other requirements. This could take a while.
+Collecting allennlp
+  Using cached allennlp-2.10.0-py3-none-any.whl.metadata (20 kB)
+  Using cached allennlp-2.9.3-py3-none-any.whl.metadata (19 kB)
+  Using cached allennlp-2.9.2-py3-none-any.whl.metadata (19 kB)
+  Using cached allennlp-2.9.1-py3-none-any.whl.metadata (19 kB)
+  Using cached allennlp-2.9.0-py3-none-any.whl.metadata (18 kB)
+  Using cached allennlp-2.8.0-py3-none-any.whl.metadata (17 kB)
+  Using cached allennlp-2.7.0-py3-none-any.whl.metadata (17 kB)
+INFO: pip is still looking at multiple versions of allennlp to determine which version is compatible with other requirements. This could take a while.
+  Using cached allennlp-2.6.0-py3-none-any.whl.metadata (17 kB)
+  Using cached allennlp-2.5.0-py3-none-any.whl.metadata (17 kB)
+  Using cached allennlp-2.4.0-py3-none-any.whl.metadata (17 kB)
+  Using cached allennlp-2.3.1-py3-none-any.whl.metadata (17 kB)
+  Using cached allennlp-2.3.0-py3-none-any.whl.metadata (17 kB)
+INFO: This is taking longer than usual. You might need to provide the dependency resolver with stricter constraints to reduce runtime. See https://pip.pypa.io/warnings/backtracking for guidance. If you want to abort this run, press Ctrl + C.
+  Using cached allennlp-2.2.0-py3-none-any.whl.metadata (17 kB)
+  Using cached allennlp-2.1.0-py3-none-any.whl.metadata (17 kB)
+  Using cached allennlp-2.0.1-py3-none-any.whl.metadata (15 kB)
+  Using cached allennlp-2.0.0-py3-none-any.whl.metadata (15 kB)
+  Using cached allennlp-1.5.0-py3-none-any.whl.metadata (15 kB)
+  Using cached allennlp-1.4.1-py3-none-any.whl.metadata (15 kB)
+  Using cached allennlp-1.4.0-py3-none-any.whl.metadata (15 kB)
+  Using cached allennlp-1.3.0-py3-none-any.whl.metadata (15 kB)
+  Using cached allennlp-1.2.2-py3-none-any.whl.metadata (15 kB)
+  Using cached allennlp-1.2.1-py3-none-any.whl.metadata (14 kB)
+  Using cached allennlp-1.2.0-py3-none-any.whl.metadata (13 kB)
+  Using cached allennlp-1.1.0-py3-none-any.whl.metadata (13 kB)
+  Using cached allennlp-1.0.0-py3-none-any.whl.metadata (11 kB)
+  Using cached allennlp-0.9.0-py3-none-any.whl.metadata (11 kB)
+Requirement already satisfied: torch>=1.2.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from allennlp) (2.5.1)
+Requirement already satisfied: overrides in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from allennlp) (7.7.0)
+Collecting spacy
+  Using cached spacy-2.1.9.tar.gz (30.7 MB)
+  Installing build dependencies ... error
+  error: subprocess-exited-with-error
+  × pip subprocess to install build dependencies did not run successfully.
+  ¦ exit code: 1
+  ?-> [35 lines of output]
+      Collecting setuptools
+        Using cached setuptools-75.6.0-py3-none-any.whl.metadata (6.7 kB)
+      Collecting wheel<0.33.0,>0.32.0
+        Using cached wheel-0.32.3-py2.py3-none-any.whl.metadata (2.1 kB)
+      Collecting Cython
+        Using cached Cython-3.0.11-cp312-cp312-win_amd64.whl.metadata (3.2 kB)
+      Collecting cymem<2.1.0,>=2.0.2
+        Using cached cymem-2.0.10-cp312-cp312-win_amd64.whl.metadata (8.6 kB)
+      Collecting preshed<2.1.0,>=2.0.1
+        Using cached preshed-2.0.1.tar.gz (113 kB)
+        Preparing metadata (setup.py): started
+        Preparing metadata (setup.py): finished with status 'error'
+        error: subprocess-exited-with-error
+        python setup.py egg_info did not run successfully.
+        exit code: 1
+        [6 lines of output]
+        Traceback (most recent call last):
+          File "<string>", line 2, in <module>
+          File "<pip-setuptools-caller>", line 34, in <module>
+          File "C:\Users\Sanjoy Nath\AppData\Local\Temp\pip-install-f2fnvbx9\preshed_abf99aa5193148e6974cf1d1e1a74a5a\setup.py", line 9, in <module>
+            from distutils import ccompiler, msvccompiler
+        ImportError: cannot import name 'msvccompiler' from 'distutils' (C:\Users\Sanjoy Nath\AppData\Roaming\Python\Python312\site-packages\setuptools\_distutils\__init__.py). Did you mean: 'ccompiler'?
+        [end of output]
+        note: This error originates from a subprocess, and is likely not a problem with pip.
+      error: metadata-generation-failed
+      Encountered error while generating package metadata.
+      See above for output.
+      note: This is an issue with the package mentioned above, not pip.
+      hint: See above for details.
+      [end of output]
+  note: This error originates from a subprocess, and is likely not a problem with pip.
+error: subprocess-exited-with-error
+× pip subprocess to install build dependencies did not run successfully.
+¦ exit code: 1
+?-> See above for output.
+note: This error originates from a subprocess, and is likely not a problem with pip.
+C:\Users\Sanjoy Nath>
+Here's a complete Python script that includes the main methods and uses matplotlib.pyplot, sklearn.decomposition.PCA, numpy, and spacy to visualize word vectors:
+Python Script
+import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
+import numpy as np
+import spacy
+def main():
+    # Load the spaCy model
+    try:
+        nlp = spacy.load("en_core_web_md")
+    except OSError:
+        # Download the model if it's not already installed
+        from spacy.cli import download
+        download("en_core_web_md")
+        nlp = spacy.load("en_core_web_md")
+    # Define the vocabulary
+    vocab = nlp("cat dog tiger elephant bird monkey lion cheetah burger pizza food cheese wine salad noodles macaroni fruit vegetable")
+    # Extract words and their vectors
+    words = [word.text for word in vocab]
+    vecs = np.vstack([word.vector for word in vocab if word.has_vector])
+    # Perform PCA to reduce dimensions to 2
+    pca = PCA(n_components=2)
+    vecs_transformed = pca.fit_transform(vecs)
+    # Plot the transformed vectors
+    plt.figure(figsize=(20, 15))
+    plt.scatter(vecs_transformed[:, 0], vecs_transformed[:, 1])
+    # Annotate the plot with words
+    for word, coord in zip(words, vecs_transformed):
+        x, y = coord
+        plt.text(x, y, word, size=15)
+    # Show the plot
+    plt.show()
+if __name__ == "__main__":
+    main()
+Explanation
+1.	Imports:
+•	matplotlib.pyplot for plotting.
+•	PCA from sklearn.decomposition for dimensionality reduction.
+•	numpy for numerical operations.
+•	spacy for natural language processing.
+2.	Main Function:
+•	Loads the spaCy model en_core_web_md. If the model is not found, it downloads and loads it.
+•	Defines a vocabulary of words.
+•	Extracts the vectors for each word in the vocabulary.
+•	Uses PCA to reduce the dimensionality of the word vectors to 2 dimensions.
+•	Plots the transformed vectors and annotates them with the corresponding words.
+•	Displays the plot.
+Running the Script
+1.	Ensure spaCy Model is Installed:
+•	If you haven't already installed the en_core_web_md model, you can do so by running:
+•	python -m spacy download en_core_web_md
+2.	Run the Script:
+•	Save the script to a file (e.g., word_vectors_pca.py).
+•	Open a terminal or command prompt.
+•	Navigate to the directory where the script is saved.
+•	Run the script using:
+•	python word_vectors_pca.py
+This script will generate a scatter plot of the word vectors reduced to 2 dimensions using PCA, with each point labeled by the corresponding word. 
+Microsoft Windows [Version 10.0.22631.4602]
+(c) Microsoft Corporation. All rights reserved.
+C:\Users\Sanjoy Nath>d:
+D:\>cd D:\SAANS_OFFLINES_GPT_SENTENCES_ANALYSERS
+D:\SAANS_OFFLINES_GPT_SENTENCES_ANALYSERS>dot -Tps examplesgraphviz.dot -o examplesgraphviz.png
+D:\SAANS_OFFLINES_GPT_SENTENCES_ANALYSERS>dot -Tpng examplesgraphviz.dot -o examplesgraphviz.png
+D:\SAANS_OFFLINES_GPT_SENTENCES_ANALYSERS>dot -Tpng timelinesexamplesgraphviz.dot -o timelinesexamplesgraphviz.png
+Error: timelinesexamplesgraphviz.dot: syntax error in line 39 near '.'
+D:\SAANS_OFFLINES_GPT_SENTENCES_ANALYSERS>dot -Tpng timelinesexamplesgraphviz.dot -o timelinesexamplesgraphviz.png
+D:\SAANS_OFFLINES_GPT_SENTENCES_ANALYSERS>pip install pygraphviz
+Defaulting to user installation because normal site-packages is not writeable
+Collecting pygraphviz
+  Using cached pygraphviz-1.14.tar.gz (106 kB)
+  Installing build dependencies ... done
+  Getting requirements to build wheel ... done
+  Preparing metadata (pyproject.toml) ... done
+Building wheels for collected packages: pygraphviz
+  Building wheel for pygraphviz (pyproject.toml) ... error
+  error: subprocess-exited-with-error
+  × Building wheel for pygraphviz (pyproject.toml) did not run successfully.
+  ¦ exit code: 1
+  ?-> [48 lines of output]
+      running bdist_wheel
+      running build
+      running build_py
+      creating build\lib.win-amd64-cpython-312\pygraphviz
+      copying pygraphviz\agraph.py -> build\lib.win-amd64-cpython-312\pygraphviz
+      copying pygraphviz\graphviz.py -> build\lib.win-amd64-cpython-312\pygraphviz
+      copying pygraphviz\scraper.py -> build\lib.win-amd64-cpython-312\pygraphviz
+      copying pygraphviz\testing.py -> build\lib.win-amd64-cpython-312\pygraphviz
+      copying pygraphviz\__init__.py -> build\lib.win-amd64-cpython-312\pygraphviz
+      creating build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_attribute_defaults.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_clear.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_close.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_drawing.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_edge_attributes.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_graph.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_html.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_layout.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_node_attributes.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_readwrite.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_repr_mimebundle.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_scraper.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_string.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_subgraph.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_unicode.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\__init__.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      running egg_info
+      writing pygraphviz.egg-info\PKG-INFO
+      writing dependency_links to pygraphviz.egg-info\dependency_links.txt
+      writing top-level names to pygraphviz.egg-info\top_level.txt
+      reading manifest file 'pygraphviz.egg-info\SOURCES.txt'
+      reading manifest template 'MANIFEST.in'
+      warning: no files found matching '*.swg'
+      warning: no files found matching '*.png' under directory 'doc'
+      warning: no files found matching '*.html' under directory 'doc'
+      warning: no files found matching '*.txt' under directory 'doc'
+      warning: no files found matching '*.css' under directory 'doc'
+      warning: no previously-included files matching '*~' found anywhere in distribution
+      warning: no previously-included files matching '*.pyc' found anywhere in distribution
+      warning: no previously-included files matching '.svn' found anywhere in distribution
+      no previously-included directories found matching 'doc\build'
+      adding license file 'LICENSE'
+      writing manifest file 'pygraphviz.egg-info\SOURCES.txt'
+      copying pygraphviz\graphviz.i -> build\lib.win-amd64-cpython-312\pygraphviz
+      copying pygraphviz\graphviz_wrap.c -> build\lib.win-amd64-cpython-312\pygraphviz
+      running build_ext
+      building 'pygraphviz._graphviz' extension
+      error: Microsoft Visual C++ 14.0 or greater is required. Get it with "Microsoft C++ Build Tools": https://visualstudio.microsoft.com/visual-cpp-build-tools/
+      [end of output]
+  note: This error originates from a subprocess, and is likely not a problem with pip.
+  ERROR: Failed building wheel for pygraphviz
+Failed to build pygraphviz
+ERROR: ERROR: Failed to build installable wheels for some pyproject.toml based projects (pygraphviz)
+D:\SAANS_OFFLINES_GPT_SENTENCES_ANALYSERS>pip install pygraphviz
+Defaulting to user installation because normal site-packages is not writeable
+Collecting pygraphviz
+  Using cached pygraphviz-1.14.tar.gz (106 kB)
+  Installing build dependencies ... done
+  Getting requirements to build wheel ... done
+  Preparing metadata (pyproject.toml) ... done
+Building wheels for collected packages: pygraphviz
+  Building wheel for pygraphviz (pyproject.toml) ... error
+  error: subprocess-exited-with-error
+  × Building wheel for pygraphviz (pyproject.toml) did not run successfully.
+  ¦ exit code: 1
+  ?-> [48 lines of output]
+      running bdist_wheel
+      running build
+      running build_py
+      creating build\lib.win-amd64-cpython-312\pygraphviz
+      copying pygraphviz\agraph.py -> build\lib.win-amd64-cpython-312\pygraphviz
+      copying pygraphviz\graphviz.py -> build\lib.win-amd64-cpython-312\pygraphviz
+      copying pygraphviz\scraper.py -> build\lib.win-amd64-cpython-312\pygraphviz
+      copying pygraphviz\testing.py -> build\lib.win-amd64-cpython-312\pygraphviz
+      copying pygraphviz\__init__.py -> build\lib.win-amd64-cpython-312\pygraphviz
+      creating build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_attribute_defaults.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_clear.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_close.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_drawing.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_edge_attributes.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_graph.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_html.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_layout.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_node_attributes.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_readwrite.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_repr_mimebundle.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_scraper.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_string.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_subgraph.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_unicode.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\__init__.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      running egg_info
+      writing pygraphviz.egg-info\PKG-INFO
+      writing dependency_links to pygraphviz.egg-info\dependency_links.txt
+      writing top-level names to pygraphviz.egg-info\top_level.txt
+      reading manifest file 'pygraphviz.egg-info\SOURCES.txt'
+      reading manifest template 'MANIFEST.in'
+      warning: no files found matching '*.swg'
+      warning: no files found matching '*.png' under directory 'doc'
+      warning: no files found matching '*.html' under directory 'doc'
+      warning: no files found matching '*.txt' under directory 'doc'
+      warning: no files found matching '*.css' under directory 'doc'
+      warning: no previously-included files matching '*~' found anywhere in distribution
+      warning: no previously-included files matching '*.pyc' found anywhere in distribution
+      warning: no previously-included files matching '.svn' found anywhere in distribution
+      no previously-included directories found matching 'doc\build'
+      adding license file 'LICENSE'
+      writing manifest file 'pygraphviz.egg-info\SOURCES.txt'
+      copying pygraphviz\graphviz.i -> build\lib.win-amd64-cpython-312\pygraphviz
+      copying pygraphviz\graphviz_wrap.c -> build\lib.win-amd64-cpython-312\pygraphviz
+      running build_ext
+      building 'pygraphviz._graphviz' extension
+      error: Microsoft Visual C++ 14.0 or greater is required. Get it with "Microsoft C++ Build Tools": https://visualstudio.microsoft.com/visual-cpp-build-tools/
+      [end of output]
+  note: This error originates from a subprocess, and is likely not a problem with pip.
+  ERROR: Failed building wheel for pygraphviz
+Failed to build pygraphviz
+ERROR: ERROR: Failed to build installable wheels for some pyproject.toml based projects (pygraphviz)
+D:\SAANS_OFFLINES_GPT_SENTENCES_ANALYSERS>pip install pygraphviz
+Defaulting to user installation because normal site-packages is not writeable
+Collecting pygraphviz
+  Using cached pygraphviz-1.14.tar.gz (106 kB)
+  Installing build dependencies ... done
+  Getting requirements to build wheel ... done
+  Preparing metadata (pyproject.toml) ... done
+Building wheels for collected packages: pygraphviz
+  Building wheel for pygraphviz (pyproject.toml) ... error
+  error: subprocess-exited-with-error
+  × Building wheel for pygraphviz (pyproject.toml) did not run successfully.
+  ¦ exit code: 1
+  ?-> [48 lines of output]
+      running bdist_wheel
+      running build
+      running build_py
+      creating build\lib.win-amd64-cpython-312\pygraphviz
+      copying pygraphviz\agraph.py -> build\lib.win-amd64-cpython-312\pygraphviz
+      copying pygraphviz\graphviz.py -> build\lib.win-amd64-cpython-312\pygraphviz
+      copying pygraphviz\scraper.py -> build\lib.win-amd64-cpython-312\pygraphviz
+      copying pygraphviz\testing.py -> build\lib.win-amd64-cpython-312\pygraphviz
+      copying pygraphviz\__init__.py -> build\lib.win-amd64-cpython-312\pygraphviz
+      creating build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_attribute_defaults.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_clear.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_close.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_drawing.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_edge_attributes.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_graph.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_html.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_layout.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_node_attributes.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_readwrite.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_repr_mimebundle.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_scraper.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_string.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_subgraph.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\test_unicode.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      copying pygraphviz\tests\__init__.py -> build\lib.win-amd64-cpython-312\pygraphviz\tests
+      running egg_info
+      writing pygraphviz.egg-info\PKG-INFO
+      writing dependency_links to pygraphviz.egg-info\dependency_links.txt
+      writing top-level names to pygraphviz.egg-info\top_level.txt
+      reading manifest file 'pygraphviz.egg-info\SOURCES.txt'
+      reading manifest template 'MANIFEST.in'
+      warning: no files found matching '*.swg'
+      warning: no files found matching '*.png' under directory 'doc'
+      warning: no files found matching '*.html' under directory 'doc'
+      warning: no files found matching '*.txt' under directory 'doc'
+      warning: no files found matching '*.css' under directory 'doc'
+      warning: no previously-included files matching '*~' found anywhere in distribution
+      warning: no previously-included files matching '*.pyc' found anywhere in distribution
+      warning: no previously-included files matching '.svn' found anywhere in distribution
+      no previously-included directories found matching 'doc\build'
+      adding license file 'LICENSE'
+      writing manifest file 'pygraphviz.egg-info\SOURCES.txt'
+      copying pygraphviz\graphviz.i -> build\lib.win-amd64-cpython-312\pygraphviz
+      copying pygraphviz\graphviz_wrap.c -> build\lib.win-amd64-cpython-312\pygraphviz
+      running build_ext
+      building 'pygraphviz._graphviz' extension
+      error: Microsoft Visual C++ 14.0 or greater is required. Get it with "Microsoft C++ Build Tools": https://visualstudio.microsoft.com/visual-cpp-build-tools/
+      [end of output]
+  note: This error originates from a subprocess, and is likely not a problem with pip.
+  ERROR: Failed building wheel for pygraphviz
+Failed to build pygraphviz
+ERROR: ERROR: Failed to build installable wheels for some pyproject.toml based projects (pygraphviz)
+D:\SAANS_OFFLINES_GPT_SENTENCES_ANALYSERS>PY PYGV_GRAPHVIZ.PY
+Traceback (most recent call last):
+  File "D:\SAANS_OFFLINES_GPT_SENTENCES_ANALYSERS\PYGV_GRAPHVIZ.PY", line 1, in <module>
+    import gv
+ModuleNotFoundError: No module named 'gv'
+D:\SAANS_OFFLINES_GPT_SENTENCES_ANALYSERS>python -m spacy download en_core_web_md
+Defaulting to user installation because normal site-packages is not writeable
+Collecting en-core-web-md==3.7.1
+  Downloading https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.7.1/en_core_web_md-3.7.1-py3-none-any.whl (42.8 MB)
+     ???????????????????????????????????????? 42.8/42.8 MB 15.8 MB/s eta 0:00:00
+Requirement already satisfied: spacy<3.8.0,>=3.7.2 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from en-core-web-md==3.7.1) (3.7.6)
+Requirement already satisfied: spacy-legacy<3.1.0,>=3.0.11 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (3.0.12)
+Requirement already satisfied: spacy-loggers<2.0.0,>=1.0.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (1.0.5)
+Requirement already satisfied: murmurhash<1.1.0,>=0.28.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (1.0.10)
+Requirement already satisfied: cymem<2.1.0,>=2.0.2 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (2.0.8)
+Requirement already satisfied: preshed<3.1.0,>=3.0.2 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (3.0.9)
+Requirement already satisfied: thinc<8.3.0,>=8.2.2 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (8.2.5)
+Requirement already satisfied: wasabi<1.2.0,>=0.9.1 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (1.1.3)
+Requirement already satisfied: srsly<3.0.0,>=2.4.3 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (2.4.8)
+Requirement already satisfied: catalogue<2.1.0,>=2.0.6 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (2.0.10)
+Requirement already satisfied: weasel<0.5.0,>=0.1.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (0.4.1)
+Requirement already satisfied: typer<1.0.0,>=0.3.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (0.12.5)
+Requirement already satisfied: tqdm<5.0.0,>=4.38.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (4.66.5)
+Requirement already satisfied: requests<3.0.0,>=2.13.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (2.32.3)
+Requirement already satisfied: pydantic!=1.8,!=1.8.1,<3.0.0,>=1.7.4 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (2.9.2)
+Requirement already satisfied: jinja2 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (3.1.4)
+Requirement already satisfied: setuptools in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (75.6.0)
+Requirement already satisfied: packaging>=20.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (24.1)
+Requirement already satisfied: langcodes<4.0.0,>=3.2.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (3.4.0)
+Requirement already satisfied: numpy>=1.19.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (1.26.4)
+Requirement already satisfied: language-data>=1.2 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from langcodes<4.0.0,>=3.2.0->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (1.2.0)
+Requirement already satisfied: annotated-types>=0.6.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from pydantic!=1.8,!=1.8.1,<3.0.0,>=1.7.4->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (0.7.0)
+Requirement already satisfied: pydantic-core==2.23.4 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from pydantic!=1.8,!=1.8.1,<3.0.0,>=1.7.4->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (2.23.4)
+Requirement already satisfied: typing-extensions>=4.6.1 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from pydantic!=1.8,!=1.8.1,<3.0.0,>=1.7.4->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (4.12.2)
+Requirement already satisfied: charset-normalizer<4,>=2 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from requests<3.0.0,>=2.13.0->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (3.3.2)
+Requirement already satisfied: idna<4,>=2.5 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from requests<3.0.0,>=2.13.0->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (3.10)
+Requirement already satisfied: urllib3<3,>=1.21.1 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from requests<3.0.0,>=2.13.0->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (2.2.3)
+Requirement already satisfied: certifi>=2017.4.17 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from requests<3.0.0,>=2.13.0->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (2024.8.30)
+Requirement already satisfied: blis<0.8.0,>=0.7.8 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from thinc<8.3.0,>=8.2.2->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (0.7.11)
+Requirement already satisfied: confection<1.0.0,>=0.0.1 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from thinc<8.3.0,>=8.2.2->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (0.1.5)
+Requirement already satisfied: colorama in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from tqdm<5.0.0,>=4.38.0->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (0.4.6)
+Requirement already satisfied: click>=8.0.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from typer<1.0.0,>=0.3.0->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (8.1.7)
+Requirement already satisfied: shellingham>=1.3.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from typer<1.0.0,>=0.3.0->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (1.5.4)
+Requirement already satisfied: rich>=10.11.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from typer<1.0.0,>=0.3.0->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (13.8.1)
+Requirement already satisfied: cloudpathlib<1.0.0,>=0.7.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from weasel<0.5.0,>=0.1.0->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (0.19.0)
+Requirement already satisfied: smart-open<8.0.0,>=5.2.1 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from weasel<0.5.0,>=0.1.0->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (7.0.4)
+Requirement already satisfied: MarkupSafe>=2.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from jinja2->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (2.1.5)
+Requirement already satisfied: marisa-trie>=0.7.7 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from language-data>=1.2->langcodes<4.0.0,>=3.2.0->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (1.2.0)
+Requirement already satisfied: markdown-it-py>=2.2.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from rich>=10.11.0->typer<1.0.0,>=0.3.0->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (3.0.0)
+Requirement already satisfied: pygments<3.0.0,>=2.13.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from rich>=10.11.0->typer<1.0.0,>=0.3.0->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (2.18.0)
+Requirement already satisfied: wrapt in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from smart-open<8.0.0,>=5.2.1->weasel<0.5.0,>=0.1.0->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (1.16.0)
+Requirement already satisfied: mdurl~=0.1 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from markdown-it-py>=2.2.0->rich>=10.11.0->typer<1.0.0,>=0.3.0->spacy<3.8.0,>=3.7.2->en-core-web-md==3.7.1) (0.1.2)
+Installing collected packages: en-core-web-md
+Successfully installed en-core-web-md-3.7.1
+? Download and installation successful
+You can now load the package via spacy.load('en_core_web_md')
+D:\SAANS_OFFLINES_GPT_SENTENCES_ANALYSERS>python -m spacy download en_core_web_lg
+Defaulting to user installation because normal site-packages is not writeable
+Collecting en-core-web-lg==3.7.1
+  Downloading https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.7.1/en_core_web_lg-3.7.1-py3-none-any.whl (587.7 MB)
+     ???????????????????????????????????????? 587.7/587.7 MB 10.4 MB/s eta 0:00:00
+Requirement already satisfied: spacy<3.8.0,>=3.7.2 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from en-core-web-lg==3.7.1) (3.7.6)
+Requirement already satisfied: spacy-legacy<3.1.0,>=3.0.11 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (3.0.12)
+Requirement already satisfied: spacy-loggers<2.0.0,>=1.0.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (1.0.5)
+Requirement already satisfied: murmurhash<1.1.0,>=0.28.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (1.0.10)
+Requirement already satisfied: cymem<2.1.0,>=2.0.2 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (2.0.8)
+Requirement already satisfied: preshed<3.1.0,>=3.0.2 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (3.0.9)
+Requirement already satisfied: thinc<8.3.0,>=8.2.2 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (8.2.5)
+Requirement already satisfied: wasabi<1.2.0,>=0.9.1 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (1.1.3)
+Requirement already satisfied: srsly<3.0.0,>=2.4.3 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (2.4.8)
+Requirement already satisfied: catalogue<2.1.0,>=2.0.6 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (2.0.10)
+Requirement already satisfied: weasel<0.5.0,>=0.1.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (0.4.1)
+Requirement already satisfied: typer<1.0.0,>=0.3.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (0.12.5)
+Requirement already satisfied: tqdm<5.0.0,>=4.38.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (4.66.5)
+Requirement already satisfied: requests<3.0.0,>=2.13.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (2.32.3)
+Requirement already satisfied: pydantic!=1.8,!=1.8.1,<3.0.0,>=1.7.4 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (2.9.2)
+Requirement already satisfied: jinja2 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (3.1.4)
+Requirement already satisfied: setuptools in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (75.6.0)
+Requirement already satisfied: packaging>=20.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (24.1)
+Requirement already satisfied: langcodes<4.0.0,>=3.2.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (3.4.0)
+Requirement already satisfied: numpy>=1.19.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (1.26.4)
+Requirement already satisfied: language-data>=1.2 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from langcodes<4.0.0,>=3.2.0->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (1.2.0)
+Requirement already satisfied: annotated-types>=0.6.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from pydantic!=1.8,!=1.8.1,<3.0.0,>=1.7.4->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (0.7.0)
+Requirement already satisfied: pydantic-core==2.23.4 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from pydantic!=1.8,!=1.8.1,<3.0.0,>=1.7.4->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (2.23.4)
+Requirement already satisfied: typing-extensions>=4.6.1 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from pydantic!=1.8,!=1.8.1,<3.0.0,>=1.7.4->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (4.12.2)
+Requirement already satisfied: charset-normalizer<4,>=2 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from requests<3.0.0,>=2.13.0->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (3.3.2)
+Requirement already satisfied: idna<4,>=2.5 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from requests<3.0.0,>=2.13.0->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (3.10)
+Requirement already satisfied: urllib3<3,>=1.21.1 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from requests<3.0.0,>=2.13.0->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (2.2.3)
+Requirement already satisfied: certifi>=2017.4.17 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from requests<3.0.0,>=2.13.0->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (2024.8.30)
+Requirement already satisfied: blis<0.8.0,>=0.7.8 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from thinc<8.3.0,>=8.2.2->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (0.7.11)
+Requirement already satisfied: confection<1.0.0,>=0.0.1 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from thinc<8.3.0,>=8.2.2->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (0.1.5)
+Requirement already satisfied: colorama in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from tqdm<5.0.0,>=4.38.0->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (0.4.6)
+Requirement already satisfied: click>=8.0.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from typer<1.0.0,>=0.3.0->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (8.1.7)
+Requirement already satisfied: shellingham>=1.3.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from typer<1.0.0,>=0.3.0->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (1.5.4)
+Requirement already satisfied: rich>=10.11.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from typer<1.0.0,>=0.3.0->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (13.8.1)
+Requirement already satisfied: cloudpathlib<1.0.0,>=0.7.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from weasel<0.5.0,>=0.1.0->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (0.19.0)
+Requirement already satisfied: smart-open<8.0.0,>=5.2.1 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from weasel<0.5.0,>=0.1.0->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (7.0.4)
+Requirement already satisfied: MarkupSafe>=2.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from jinja2->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (2.1.5)
+Requirement already satisfied: marisa-trie>=0.7.7 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from language-data>=1.2->langcodes<4.0.0,>=3.2.0->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (1.2.0)
+Requirement already satisfied: markdown-it-py>=2.2.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from rich>=10.11.0->typer<1.0.0,>=0.3.0->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (3.0.0)
+Requirement already satisfied: pygments<3.0.0,>=2.13.0 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from rich>=10.11.0->typer<1.0.0,>=0.3.0->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (2.18.0)
+Requirement already satisfied: wrapt in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from smart-open<8.0.0,>=5.2.1->weasel<0.5.0,>=0.1.0->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (1.16.0)
+Requirement already satisfied: mdurl~=0.1 in c:\users\sanjoy nath\appdata\roaming\python\python312\site-packages (from markdown-it-py>=2.2.0->rich>=10.11.0->typer<1.0.0,>=0.3.0->spacy<3.8.0,>=3.7.2->en-core-web-lg==3.7.1) (0.1.2)
+Installing collected packages: en-core-web-lg
+Successfully installed en-core-web-lg-3.7.1
+? Download and installation successful
+You can now load the package via spacy.load('en_core_web_lg')
+D:\SAANS_OFFLINES_GPT_SENTENCES_ANALYSERS>
+F:\sanjoy_workouts\C_SHARPS_DEVELOPMENT_SOL\CSHARP___GRAPHVIZ\GraphViz-C-Sharp-Wrapper-master\GraphViz-C-Sharp-Wrapper-master\src\GraphVizWrapper.Tests
+Volume in drive C has no label.
+ Volume Serial Number is 520B-E9B4
+ Directory of C:\Program Files (x86)\Graphviz
+12/20/2024  08:17 AM    <DIR>          .
+12/20/2024  08:17 AM    <DIR>          ..
+12/20/2024  08:17 AM    <DIR>          bin
+12/20/2024  08:17 AM    <DIR>          include
+12/20/2024  08:17 AM    <DIR>          lib
+12/20/2024  08:17 AM    <DIR>          share
+12/20/2024  08:17 AM           181,959 Uninstall.exe
+               1 File(s)        181,959 bytes
+ Directory of C:\Program Files (x86)\Graphviz\bin
+12/20/2024  08:17 AM    <DIR>          .
+12/20/2024  08:17 AM    <DIR>          ..
+12/07/2024  05:30 AM            11,776 acyclic.exe
+12/07/2024  05:28 AM           196,608 ANN.dll
+12/07/2024  05:30 AM            15,360 bcomps.exe
+12/07/2024  05:28 AM           136,192 brotlicommon.dll
+12/07/2024  05:28 AM            44,544 brotlidec.dll
+12/07/2024  05:28 AM            64,512 bz2.dll
+12/07/2024  05:28 AM           814,592 cairo-2.dll
+12/07/2024  05:30 AM            20,480 ccomps.exe
+12/07/2024  05:30 AM            18,944 cdt.dll
+12/07/2024  05:30 AM            10,240 cgraph++.dll
+12/07/2024  05:30 AM            67,072 cgraph.dll
+12/07/2024  05:31 AM            10,240 circo.exe
+12/07/2024  05:31 AM           207,360 cluster.exe
+06/13/2024  08:18 PM           258,128 concrt140.dll
+12/07/2024  05:32 AM             3,943 config6
+12/07/2024  05:31 AM            13,312 diffimg.exe
+12/07/2024  05:31 AM            14,336 dijkstra.exe
+12/07/2024  05:31 AM            10,240 dot.exe
+12/07/2024  05:32 AM            31,232 dot2gxl.exe
+12/07/2024  05:31 AM            11,264 dot_builtins.exe
+12/07/2024  05:26 AM             2,741 dot_sandbox
+12/07/2024  05:31 AM           219,648 edgepaint.exe
+12/07/2024  05:31 AM            10,240 fdp.exe
+12/07/2024  05:28 AM            24,064 ffi-8.dll
+12/07/2024  05:28 AM           226,816 fontconfig-1.dll
+12/07/2024  05:28 AM           568,320 freetype.dll
+12/07/2024  05:28 AM           112,128 fribidi-0.dll
+12/07/2024  05:31 AM            13,312 gc.exe
+12/07/2024  05:30 AM            23,552 gdtclft.dll
+12/07/2024  05:28 AM            16,896 getopt.dll
+12/07/2024  05:28 AM         1,299,968 gio-2.0-0.dll
+12/07/2024  05:28 AM         1,094,144 glib-2.0-0.dll
+12/07/2024  05:31 AM            35,840 gml2gv.exe
+12/07/2024  05:28 AM            16,384 gmodule-2.0-0.dll
+12/07/2024  05:28 AM           256,512 gobject-2.0-0.dll
+12/07/2024  05:31 AM            17,408 graphml2gv.exe
+12/07/2024  05:28 AM           309,760 gts.dll
+12/07/2024  05:31 AM            19,968 gv2gml.exe
+12/07/2024  05:32 AM            31,232 gv2gxl.exe
+12/07/2024  05:31 AM            16,384 gvc++.dll
+12/07/2024  05:30 AM           476,672 gvc.dll
+12/07/2024  05:31 AM            28,160 gvcolor.exe
+12/07/2024  05:31 AM            21,504 gvgen.exe
+12/07/2024  05:31 AM           284,672 gvmap.exe
+12/07/2024  05:26 AM             2,385 gvmap.sh
+12/07/2024  05:31 AM            32,256 gvpack.exe
+12/07/2024  05:31 AM            82,432 gvplugin_core.dll
+12/07/2024  05:31 AM           124,928 gvplugin_dot_layout.dll
+12/07/2024  05:31 AM            35,840 gvplugin_gd.dll
+12/07/2024  05:32 AM            25,088 gvplugin_gdiplus.dll
+12/07/2024  05:32 AM            10,752 gvplugin_kitty.dll
+12/07/2024  05:31 AM           370,688 gvplugin_neato_layout.dll
+12/07/2024  05:31 AM            31,744 gvplugin_pango.dll
+12/07/2024  05:31 AM            16,384 gvplugin_vt.dll
+12/07/2024  05:31 AM            13,824 gvplugin_webp.dll
+12/07/2024  05:32 AM           256,512 gvpr.exe
+12/07/2024  05:32 AM            31,232 gxl2dot.exe
+12/07/2024  05:32 AM            31,232 gxl2gv.exe
+12/07/2024  05:28 AM           933,376 harfbuzz.dll
+12/07/2024  05:28 AM         1,053,184 iconv-2.dll
+12/07/2024  05:28 AM            71,680 intl-8.dll
+12/07/2024  05:28 AM           708,608 jpeg62.dll
+12/07/2024  05:28 AM           129,024 libexpat.dll
+12/07/2024  05:28 AM           348,160 libgd.dll
+12/07/2024  05:28 AM           160,768 liblzma.dll
+12/07/2024  05:28 AM           167,424 libpng16.dll
+12/07/2024  05:28 AM            23,552 libsharpyuv.dll
+12/07/2024  05:28 AM           293,376 libwebp.dll
+12/07/2024  05:32 AM           215,552 mingle.exe
+12/07/2024  05:32 AM            28,160 mm2gv.exe
+06/13/2024  08:18 PM           449,616 msvcp140.dll
+06/13/2024  08:18 PM            33,872 msvcp140_1.dll
+06/13/2024  08:18 PM           250,992 msvcp140_2.dll
+06/13/2024  08:18 PM            47,184 msvcp140_atomic_wait.dll
+06/13/2024  08:18 PM            30,832 msvcp140_codecvt_ids.dll
+12/07/2024  05:31 AM            10,240 neato.exe
+12/07/2024  05:32 AM            10,240 nop.exe
+12/07/2024  05:31 AM            10,240 osage.exe
+12/07/2024  05:28 AM           308,224 pango-1.0-0.dll
+12/07/2024  05:28 AM            48,128 pangocairo-1.0-0.dll
+12/07/2024  05:28 AM            64,512 pangoft2-1.0-0.dll
+12/07/2024  05:28 AM            46,080 pangowin32-1.0-0.dll
+12/07/2024  05:31 AM            10,240 patchwork.exe
+12/07/2024  05:30 AM            32,768 pathplan.dll
+12/07/2024  05:28 AM           493,056 pcre2-8.dll
+12/07/2024  05:28 AM           574,464 pixman-1-0.dll
+12/07/2024  05:32 AM            13,824 prune.exe
+12/07/2024  05:32 AM            14,336 sccmap.exe
+12/07/2024  05:31 AM            10,240 sfdp.exe
+12/07/2024  05:28 AM         1,466,880 tcl86t.dll
+12/07/2024  05:30 AM            39,424 tcldot.dll
+12/07/2024  05:32 AM            39,936 tcldot_builtin.dll
+12/07/2024  05:30 AM             8,704 tclplan.dll
+12/07/2024  05:28 AM           413,184 tiff.dll
+12/07/2024  05:32 AM            10,752 tred.exe
+12/07/2024  05:31 AM            10,240 twopi.exe
+12/07/2024  05:32 AM            11,776 unflatten.exe
+06/13/2024  08:18 PM            91,112 vcruntime140.dll
+12/07/2024  05:30 AM            20,992 xdot.dll
+12/07/2024  05:28 AM            78,848 zlib1.dll
+             100 File(s)     16,935,797 bytes
+ Directory of C:\Program Files (x86)\Graphviz\include
+12/20/2024  08:17 AM    <DIR>          .
+12/20/2024  08:17 AM    <DIR>          ..
+12/20/2024  08:17 AM    <DIR>          graphviz
+               0 File(s)              0 bytes
+ Directory of C:\Program Files (x86)\Graphviz\include\graphviz
+12/20/2024  08:17 AM    <DIR>          .
+12/20/2024  08:17 AM    <DIR>          ..
+12/07/2024  05:26 AM             1,266 AGraph.h
+12/07/2024  05:26 AM             1,342 arith.h
+12/07/2024  05:26 AM             7,013 cdt.h
+12/07/2024  05:26 AM            36,258 cgraph.h
+12/07/2024  05:26 AM             1,279 color.h
+12/07/2024  05:26 AM             2,904 geom.h
+12/07/2024  05:29 AM               326 graphviz_version.h
+12/07/2024  05:26 AM             4,603 gvc.h
+12/07/2024  05:26 AM             1,537 gvcext.h
+12/07/2024  05:26 AM            12,903 gvcjob.h
+12/07/2024  05:26 AM             1,086 gvcommon.h
+12/07/2024  05:26 AM               907 gvconfig.h
+12/07/2024  05:26 AM             1,852 GVContext.h
+12/07/2024  05:26 AM             1,712 GVLayout.h
+12/07/2024  05:26 AM             1,920 gvplugin.h
+12/07/2024  05:26 AM               892 gvplugin_device.h
+12/07/2024  05:26 AM               840 gvplugin_layout.h
+12/07/2024  05:26 AM             1,350 gvplugin_loadimage.h
+12/07/2024  05:26 AM             2,196 gvplugin_render.h
+12/07/2024  05:26 AM               882 gvplugin_textlayout.h
+12/07/2024  05:26 AM             1,699 GVRenderData.h
+12/07/2024  05:26 AM             4,379 pack.h
+12/07/2024  05:26 AM             1,486 pathgeom.h
+12/07/2024  05:26 AM             2,107 pathplan.h
+12/07/2024  05:26 AM             2,198 textspan.h
+12/07/2024  05:26 AM            22,113 types.h
+12/07/2024  05:26 AM             2,256 usershape.h
+12/07/2024  05:26 AM             4,998 xdot.h
+              28 File(s)        124,304 bytes
+ Directory of C:\Program Files (x86)\Graphviz\lib
+12/20/2024  08:17 AM    <DIR>          .
+12/20/2024  08:17 AM    <DIR>          ..
+12/07/2024  05:30 AM             4,550 cdt.lib
+12/07/2024  05:30 AM             3,292 cgraph++.lib
+12/07/2024  05:30 AM            21,272 cgraph.lib
+12/07/2024  05:30 AM             1,928 gdtclft.lib
+12/20/2024  08:17 AM    <DIR>          graphviz
+12/07/2024  05:31 AM            11,320 gvc++.lib
+12/07/2024  05:30 AM            52,786 gvc.lib
+12/07/2024  05:31 AM             1,876 gvplugin_core.lib
+12/07/2024  05:31 AM             1,972 gvplugin_dot_layout.lib
+12/07/2024  05:31 AM             1,768 gvplugin_gd.lib
+12/07/2024  05:32 AM             1,924 gvplugin_gdiplus.lib
+12/07/2024  05:32 AM             1,892 gvplugin_kitty.lib
+12/07/2024  05:31 AM             9,416 gvplugin_neato_layout.lib
+12/07/2024  05:31 AM             1,892 gvplugin_pango.lib
+12/07/2024  05:31 AM             1,768 gvplugin_vt.lib
+12/07/2024  05:31 AM             1,876 gvplugin_webp.lib
+12/07/2024  05:30 AM             4,520 pathplan.lib
+12/20/2024  08:17 AM    <DIR>          pkgconfig
+12/07/2024  05:30 AM             1,918 tcldot.lib
+12/07/2024  05:32 AM             2,102 tcldot_builtin.lib
+12/07/2024  05:30 AM             3,284 xdot.lib
+              19 File(s)        131,356 bytes
+ Directory of C:\Program Files (x86)\Graphviz\lib\graphviz
+12/20/2024  08:17 AM    <DIR>          .
+12/20/2024  08:17 AM    <DIR>          ..
+12/20/2024  08:17 AM    <DIR>          tcl
+               0 File(s)              0 bytes
+ Directory of C:\Program Files (x86)\Graphviz\lib\graphviz\tcl
+12/20/2024  08:17 AM    <DIR>          .
+12/20/2024  08:17 AM    <DIR>          ..
+12/07/2024  05:30 AM               260 pkgIndex.tcl
+               1 File(s)            260 bytes
+ Directory of C:\Program Files (x86)\Graphviz\lib\pkgconfig
+12/20/2024  08:17 AM    <DIR>          .
+12/20/2024  08:17 AM    <DIR>          ..
+12/07/2024  05:30 AM               330 libcdt.pc
+12/07/2024  05:30 AM               431 libcgraph.pc
+12/07/2024  05:30 AM               360 libgvc.pc
+12/07/2024  05:30 AM               339 libgvpr.pc
+12/07/2024  05:30 AM               385 libpathplan.pc
+12/07/2024  05:30 AM               347 libxdot.pc
+               6 File(s)          2,192 bytes
+ Directory of C:\Program Files (x86)\Graphviz\share
+12/20/2024  08:17 AM    <DIR>          .
+12/20/2024  08:17 AM    <DIR>          ..
+12/20/2024  08:17 AM    <DIR>          graphviz
+12/20/2024  08:17 AM    <DIR>          man
+               0 File(s)              0 bytes
+ Directory of C:\Program Files (x86)\Graphviz\share\graphviz
+12/20/2024  08:17 AM    <DIR>          .
+12/20/2024  08:17 AM    <DIR>          ..
+12/20/2024  08:17 AM    <DIR>          graphs
+               0 File(s)              0 bytes
+ Directory of C:\Program Files (x86)\Graphviz\share\graphviz\graphs
+12/20/2024  08:17 AM    <DIR>          .
+12/20/2024  08:17 AM    <DIR>          ..
+12/20/2024  08:17 AM    <DIR>          directed
+12/20/2024  08:17 AM    <DIR>          undirected
+               0 File(s)              0 bytes
+ Directory of C:\Program Files (x86)\Graphviz\share\graphviz\graphs\directed
+12/20/2024  08:17 AM    <DIR>          .
+12/20/2024  08:17 AM    <DIR>          ..
+12/07/2024  05:26 AM               841 abstract.gv
+12/07/2024  05:26 AM               990 alf.gv
+12/07/2024  05:26 AM             4,855 arrows.gv
+12/07/2024  05:26 AM             7,493 awilliams.gv
+12/07/2024  05:26 AM             1,404 biological.gv
+12/07/2024  05:26 AM               277 clust.gv
+12/07/2024  05:26 AM               154 clust1.gv
+12/07/2024  05:26 AM               154 clust2.gv
+12/07/2024  05:26 AM               154 clust3.gv
+12/07/2024  05:26 AM               428 clust4.gv
+12/07/2024  05:26 AM               263 clust5.gv
+12/07/2024  05:26 AM             5,676 crazy.gv
+12/07/2024  05:26 AM               442 ctext.gv
+12/07/2024  05:26 AM               993 dfa.gv
+12/07/2024  05:26 AM               909 fig6.gv
+12/07/2024  05:26 AM               625 fsm.gv
+12/07/2024  05:26 AM             1,373 grammar.gv
+12/07/2024  05:26 AM               652 hashtable.gv
+12/07/2024  05:26 AM             3,166 honda-tokoro.gv
+12/07/2024  05:26 AM               813 japanese.gv
+12/07/2024  05:26 AM               822 jcctree.gv
+12/07/2024  05:26 AM             6,339 jsort.gv
+12/07/2024  05:26 AM               436 KW91.gv
+12/07/2024  05:26 AM               104 Latin1.gv
+12/07/2024  05:26 AM             5,571 ldbxtried.gv
+12/07/2024  05:26 AM                93 longflat.gv
+12/07/2024  05:26 AM               423 mike.gv
+12/07/2024  05:26 AM             2,798 NaN.gv
+12/07/2024  05:26 AM               352 nhg.gv
+12/07/2024  05:26 AM             2,052 oldarrows.gv
+12/07/2024  05:26 AM             2,705 pgram.gv
+12/07/2024  05:26 AM             2,146 pm2way.gv
+12/07/2024  05:26 AM             3,718 pmpipe.gv
+12/07/2024  05:26 AM             5,317 polypoly.gv
+12/07/2024  05:26 AM             6,564 proc3d.gv
+12/07/2024  05:26 AM             2,701 psfonttest.gv
+12/07/2024  05:26 AM               161 record2.gv
+12/07/2024  05:26 AM               434 records.gv
+12/07/2024  05:26 AM               837 rowe.gv
+12/07/2024  05:26 AM               528 russian.gv
+12/07/2024  05:26 AM             5,712 sdh.gv
+12/07/2024  05:26 AM             1,157 shells.gv
+12/07/2024  05:26 AM               513 states.gv
+12/07/2024  05:26 AM               315 structs.gv
+12/07/2024  05:26 AM             1,404 switch.gv
+12/07/2024  05:26 AM             1,184 table.gv
+12/07/2024  05:26 AM               807 train11.gv
+12/07/2024  05:26 AM             1,563 trapeziumlr.gv
+12/07/2024  05:26 AM               608 tree.gv
+12/07/2024  05:26 AM             1,724 triedds.gv
+12/07/2024  05:26 AM               178 try.gv
+12/07/2024  05:26 AM             1,486 unix.gv
+12/07/2024  05:26 AM             1,782 unix2.gv
+12/07/2024  05:26 AM             1,831 viewfile.gv
+12/07/2024  05:26 AM             1,047 world.gv
+              55 File(s)         97,074 bytes
+ Directory of C:\Program Files (x86)\Graphviz\share\graphviz\graphs\undirected
+12/20/2024  08:17 AM    <DIR>          .
+12/20/2024  08:17 AM    <DIR>          ..
+12/07/2024  05:26 AM               672 ER.gv
+12/07/2024  05:26 AM               821 Heawood.gv
+12/07/2024  05:26 AM             1,857 ngk10_4.gv
+12/07/2024  05:26 AM               952 Petersen.gv
+12/07/2024  05:26 AM               249 process.gv
+               5 File(s)          4,551 bytes
+ Directory of C:\Program Files (x86)\Graphviz\share\man
+12/20/2024  08:17 AM    <DIR>          .
+12/20/2024  08:17 AM    <DIR>          ..
+12/20/2024  08:17 AM    <DIR>          man1
+12/20/2024  08:17 AM    <DIR>          man3
+               0 File(s)              0 bytes
+ Directory of C:\Program Files (x86)\Graphviz\share\man\man1
+12/20/2024  08:17 AM    <DIR>          .
+12/20/2024  08:17 AM    <DIR>          ..
+12/07/2024  05:26 AM             1,658 acyclic.1
+12/07/2024  05:26 AM             2,186 bcomps.1
+12/07/2024  05:26 AM             4,288 ccomps.1
+12/07/2024  05:26 AM             2,381 cluster.1
+12/07/2024  05:26 AM               815 diffimg.1
+12/07/2024  05:26 AM             1,634 dijkstra.1
+12/07/2024  05:26 AM            30,826 dot.1
+12/07/2024  05:26 AM               860 dot_sandbox.1
+12/07/2024  05:26 AM             2,244 edgepaint.1
+12/07/2024  05:26 AM             1,589 gc.1
+12/07/2024  05:26 AM             2,098 gml2gv.1
+12/07/2024  05:26 AM             1,552 graphml2gv.1
+12/07/2024  05:26 AM             1,982 gvcolor.1
+12/07/2024  05:26 AM             4,633 gvgen.1
+12/07/2024  05:26 AM             5,800 gvmap.1
+12/07/2024  05:26 AM             4,051 gvpack.1
+12/07/2024  05:26 AM            47,608 gvpr.1
+12/07/2024  05:26 AM             2,404 gxl2gv.1
+12/07/2024  05:26 AM             3,292 mingle.1
+12/07/2024  05:26 AM             3,228 mm2gv.1
+12/07/2024  05:26 AM               755 nop.1
+12/07/2024  05:26 AM            19,560 osage.1
+12/07/2024  05:26 AM            19,570 patchwork.1
+12/07/2024  05:26 AM             2,812 prune.1
+12/07/2024  05:26 AM             1,827 sccmap.1
+12/07/2024  05:26 AM             1,510 tred.1
+12/07/2024  05:26 AM             1,604 unflatten.1
+              27 File(s)        172,767 bytes
+ Directory of C:\Program Files (x86)\Graphviz\share\man\man3
+12/20/2024  08:17 AM    <DIR>          .
+12/20/2024  08:17 AM    <DIR>          ..
+12/07/2024  05:26 AM            15,993 cdt.3
+12/07/2024  05:26 AM            29,201 cgraph.3
+12/07/2024  05:26 AM            13,063 gdtclft.3tcl
+12/07/2024  05:26 AM             2,167 gvc.3
+12/07/2024  05:26 AM             9,849 pack.3
+12/07/2024  05:26 AM             5,506 pathplan.3
+12/07/2024  05:26 AM            15,550 tcldot.3tcl
+12/07/2024  05:26 AM             9,634 xdot.3
+               8 File(s)        100,963 bytes
+     Total Files Listed:
+             250 File(s)     17,751,223 bytes
+              47 Dir(s)  155,485,159,424 bytes free
+READ THE DOCUMENT AND USE LARGE SPACY MODEL TO READ THE PDF FILE OR TEXT FILE SELECTED THROUGH TKINTER FILESCHOOSER AND KEEP THE CODING STRUCTURE INTACT AND THEN REPLACE ALL \r\n of the text of the file with "" and flartten the file texts first.Then replace sentence endings "." with ".\r\n" and then do the line numberng for every sentences and put the lines(sentences to the seperate new lnes) and then create the complexity analysis report for each sentences and find the every token in a sentence to every other token in the sentences (for each sentences) and report the minimum vector distance ,max vector distance between the entities pairs in each sentences and ,differences between these two values and generate another text file where the sentences are rearranged in smallest to largest differences of such inter entity vector differences values for the sentences(obviously write the original sentence numbering before each sentences while generating these new files. Then generate seperate svg files for sentence recursive parser (syntax trees) and combine all these svg files to a single pdf file 1 page per sentence rewrite the code import tkinter as tk from tkinter import filedialog, messagebox, ttk import pdfplumber from nltk.tokenize import sent_tokenize, word_tokenize from nltk.corpus import stopwords from transformers import AutoTokenizer, AutoModelForSeq2SeqLM from collections import Counter import os # Function to extract text from a PDF def extract_text_from_pdf(pdf_path): with pdfplumber.open(pdf_path) as pdf: text = "" for page in pdf.pages: text += page.extract_text() + "\n" return text # Function to extract text from a TXT file def extract_text_from_txt(txt_path): with open(txt_path, "r", encoding="utf-8") as file: return file.read() # Function to tokenize text into sentences def tokenize_sentences(text): return sent_tokenize(text) # Function to simplify a single sentence using the pretrained model def simplify_sentence(sentence, tokenizer, model): inputs = tokenizer("simplify: " + sentence, return_tensors="pt", truncation=True) outputs = model.generate(inputs["input_ids"], max_length=512, num_beams=4, early_stopping=True) simplified = tokenizer.decode(outputs[0], skip_special_tokens=True) return simplified.split(". ") # Split into parts # Function to calculate a proxy comprehensibility score def calculate_comprehensibility(sentence): words = sentence.split() unique_words = set(words) return len(words) / len(unique_words) if unique_words else 0 # Function to extract keywords and key phrases def extract_keywords_and_phrases(text): stop_words = set(stopwords.words('english')) words = word_tokenize(text) keywords = [word for word in words if word.isalnum() and word.lower() not in stop_words] key_phrases = [" ".join(phrase) for phrase in zip(words, words[1:]) if all(w.isalnum() for w in phrase)] return Counter(keywords), Counter(key_phrases) def process_file_with_progress(input_file, file_type, output_file1, output_file2, tokenizer, model, progress_bar, progress_label): try: # Extract text based on file type text = extract_text_from_pdf(input_file) if file_type == "pdf" else extract_text_from_txt(input_file) # Tokenize text into sentences sentences = tokenize_sentences(text) total_sentences = len(sentences) # Ensure there are sentences to process if total_sentences == 0: raise ValueError("No sentences found in the document.") # Data structure to hold sentence complexities and simplified parts sentence_data = [] # Process each sentence with open(output_file1, "w", encoding="utf-8") as f1: for i, sentence in enumerate(sentences, start=1): # Update progress bar and label progress_bar["value"] = (i / total_sentences) * 100 progress_label["text"] = f"Processing sentence {i}/{total_sentences}" progress_bar.update() # Calculate complexity complexity = calculate_comprehensibility(sentence) # Simplify sentence simplified_parts = simplify_sentence(sentence, tokenizer, model) # Write to first output file f1.write(f"{i}.0 {sentence.strip()} [Complexity: {complexity:.2f}]\n") for j, part in enumerate(simplified_parts, start=1): complexity_part = calculate_comprehensibility(part) f1.write(f"{i}.{j} {part.strip()} [Complexity: {complexity_part:.2f}]\n") # Collect data for sorting sentence_data.append((sentence.strip(), complexity, simplified_parts)) # Sort by complexity sorted_data = sorted(sentence_data, key=lambda x: x[1]) # Extract keywords and key phrases all_text = " ".join([s[0] for s in sorted_data]) # Combine all sentences keywords, key_phrases = extract_keywords_and_phrases(all_text) # Write to second output file with open(output_file2, "w", encoding="utf-8") as f2: for sentence, complexity, simplified_parts in sorted_data: f2.write(f"Sentence: {sentence} [Complexity: {complexity:.2f}]\n") for part in simplified_parts: f2.write(f" Simplified: {part.strip()}\n") f2.write("\n--- Keywords and Their Complexity ---\n") for keyword, count in keywords.most_common(): f2.write(f"{keyword}: {count}\n") f2.write("\n--- Key Phrases and Their Complexity ---\n") for phrase, count in key_phrases.most_common(): f2.write(f"{phrase}: {count}\n") # Finalize progress progress_label["text"] = "Processing complete!" return True # Indicate success except Exception as e: progress_label["text"] = f"Error: {e}" return False # Indicate failure # Update select_file to only show success if the processing is complete def select_file(): file_path = filedialog.askopenfilename(filetypes=[("PDF Files", "*.pdf"), ("Text Files", "*.txt")]) if not file_path: return file_type = "pdf" if file_path.endswith(".pdf") else "txt" output_file1 = file_path + "_SIMPLIFIED_SENTENCES.TXT" output_file2 = file_path + "_SORTED_COMPLEXITY.TXT" if not output_file1 or not output_file2: return try: progress_label["text"] = "Initializing..." progress_bar["value"] = 0 success = process_file_with_progress(file_path, file_type, output_file1, output_file2, tokenizer, model, progress_bar, progress_label) if success: messagebox.showinfo("Success", f"Processing complete!\nOutputs:\n1. {output_file1}\n2. {output_file2}") else: messagebox.showerror("Error", "Processing failed. Check progress and files.") except Exception as e: progress_label["text"] = "Error occurred." messagebox.showerror("Error", f"An error occurred: {e}") # # # def process_file_with_progress(input_file, file_type, output_file1, output_file2, tokenizer, model, progress_bar, progress_label): # # # try: # # # Extract text based on file type # # # text = extract_text_from_pdf(input_file) if file_type == "pdf" else extract_text_from_txt(input_file) # # # Tokenize text into sentences # # # sentences = tokenize_sentences(text) # # # total_sentences = len(sentences) # # # Ensure there are sentences to process # # # if total_sentences == 0: # # # raise ValueError("No sentences found in the document.") # # # Data structure to hold sentence complexities and simplified parts # # # sentence_data = [] # # # Process each sentence # # # with open(output_file1, "w", encoding="utf-8") as f1: # # # for i, sentence in enumerate(sentences, start=1): # # # Update progress bar and label # # # progress_bar["value"] = (i / total_sentences) * 100 # # # progress_label["text"] = f"Processing sentence {i}/{total_sentences}" # # # progress_bar.update() # # # Calculate complexity # # # complexity = calculate_comprehensibility(sentence) # # # Simplify sentence # # # simplified_parts = simplify_sentence(sentence, tokenizer, model) # # # Write to first output file # # # f1.write(f"{i}.0 {sentence.strip()} [Complexity: {complexity:.2f}]\n") # # # for j, part in enumerate(simplified_parts, start=1): # # # complexity_part = calculate_comprehensibility(part) # # # f1.write(f"{i}.{j} {part.strip()} [Complexity: {complexity_part:.2f}]\n") # # # Collect data for sorting # # # sentence_data.append((sentence.strip(), complexity, simplified_parts)) # # # Sort by complexity # # # sorted_data = sorted(sentence_data, key=lambda x: x[1]) # # # Extract keywords and key phrases # # # all_text = " ".join([s[0] for s in sorted_data]) # Combine all sentences # # # keywords, key_phrases = extract_keywords_and_phrases(all_text) # # # Write to second output file # # # with open(output_file2, "w", encoding="utf-8") as f2: # # # for sentence, complexity, simplified_parts in sorted_data: # # # f2.write(f"Sentence: {sentence} [Complexity: {complexity:.2f}]\n") # # # for part in simplified_parts: # # # f2.write(f" Simplified: {part.strip()}\n") # # # f2.write("\n--- Keywords and Their Complexity ---\n") # # # for keyword, count in keywords.most_common(): # # # f2.write(f"{keyword}: {count}\n") # # # f2.write("\n--- Key Phrases and Their Complexity ---\n") # # # for phrase, count in key_phrases.most_common(): # # # f2.write(f"{phrase}: {count}\n") # # # Finalize progress # # # progress_label["text"] = "Processing complete!" # # # return True # Indicate success # # # except Exception as e: # # # progress_label["text"] = f"Error: {e}" # # # return False # Indicate failure # Update select_file to only show success if the processing is complete def select_file(): file_path = filedialog.askopenfilename(filetypes=[("PDF Files", "*.pdf"), ("Text Files", "*.txt")]) if not file_path: return file_type = "pdf" if file_path.endswith(".pdf") else "txt" output_file1 = file_path + "_SIMPLIFIED_SENTENCES.TXT" output_file2 = file_path + "_SORTED_COMPLEXITY.TXT" if not output_file1 or not output_file2: return try: progress_label["text"] = "Initializing..." progress_bar["value"] = 0 success = process_file_with_progress(file_path, file_type, output_file1, output_file2, tokenizer, model, progress_bar, progress_label) if success: messagebox.showinfo("Success", f"Processing complete!\nOutputs:\n1. {output_file1}\n2. {output_file2}") else: messagebox.showerror("Error", "Processing failed. Check progress and files.") except Exception as e: progress_label["text"] = "Error occurred." messagebox.showerror("Error", f"An error occurred: {e}") # # # # Function to process the file and dump results # # # def process_file_with_progress(input_file, file_type, output_file1, output_file2, tokenizer, model, progress_bar, progress_label): # # # # Extract text based on file type # # # text = extract_text_from_pdf(input_file) if file_type == "pdf" else extract_text_from_txt(input_file) # # # # Tokenize text into sentences # # # sentences = tokenize_sentences(text) # # # total_sentences = len(sentences) # # # # Data structure to hold sentence complexities and simplified parts # # # sentence_data = [] # # # # Process each sentence # # # with open(output_file1, "w", encoding="utf-8") as f1: # # # for i, sentence in enumerate(sentences, start=1): # # # # Update progress bar and label # # # progress_bar["value"] = (i / total_sentences) * 100 # # # progress_label["text"] = f"Processing sentence {i}/{total_sentences}" # # # progress_bar.update() # # # # Calculate complexity # # # complexity = calculate_comprehensibility(sentence) # # # # Simplify sentence # # # simplified_parts = simplify_sentence(sentence, tokenizer, model) # # # # Write to first output file # # # f1.write(f"{i}.0 {sentence.strip()} [Complexity: {complexity:.2f}]\n") # # # for j, part in enumerate(simplified_parts, start=1): # # # complexity_part = calculate_comprehensibility(part) # # # f1.write(f"{i}.{j} {part.strip()} [Complexity: {complexity_part:.2f}]\n") # # # # Collect data for sorting # # # sentence_data.append((sentence.strip(), complexity, simplified_parts)) # # # # Sort by complexity # # # sorted_data = sorted(sentence_data, key=lambda x: x[1]) # # # # Extract keywords and key phrases # # # all_text = " ".join([s[0] for s in sorted_data]) # Combine all sentences # # # keywords, key_phrases = extract_keywords_and_phrases(all_text) # # # # Write to second output file # # # with open(output_file2, "w", encoding="utf-8") as f2: # # # for sentence, complexity, simplified_parts in sorted_data: # # # f2.write(f"Sentence: {sentence} [Complexity: {complexity:.2f}]\n") # # # for part in simplified_parts: # # # f2.write(f" Simplified: {part.strip()}\n") # # # f2.write("\n--- Keywords and Their Complexity ---\n") # # # for keyword, count in keywords.most_common(): # # # f2.write(f"{keyword}: {count}\n") # # # f2.write("\n--- Key Phrases and Their Complexity ---\n") # # # for phrase, count in key_phrases.most_common(): # # # f2.write(f"{phrase}: {count}\n") # Main function to handle Tkinter interface and processing def main(): # Load pretrained models (offline) model_name = "t5-small" # Change to "facebook/bart-large" if needed tokenizer = AutoTokenizer.from_pretrained(model_name) model = AutoModelForSeq2SeqLM.from_pretrained(model_name) # Tkinter GUI def select_file(): file_path = filedialog.askopenfilename(filetypes=[("PDF Files", "*.pdf"), ("Text Files", "*.txt")]) if not file_path: return file_type = "pdf" if file_path.endswith(".pdf") else "txt" output_file1 = file_path + "_SIMPLIFIED_SENTENCES.TXT" output_file2 = file_path + "_SORTED_COMPLEXITY.TXT" if not output_file1 or not output_file2: return try: progress_label["text"] = "Initializing..." progress_bar["value"] = 0 process_file_with_progress(file_path, file_type, output_file1, output_file2, tokenizer, model, progress_bar, progress_label) progress_label["text"] = "Processing complete!" messagebox.showinfo("Success", f"Processing complete!\nOutputs:\n1. {output_file1}\n2. {output_file2}") except Exception as e: progress_label["text"] = "Error occurred." messagebox.showerror("Error", f"An error occurred: {e}") # Create Tkinter GUI root = tk.Tk() root.title("Semantic Analysis and Sentence Simplification") tk.Label(root, text="Select a PDF or TXT file to process").pack(pady=10) tk.Button(root, text="Select File", command=select_file).pack(pady=20) progress_label = tk.Label(root, text="") progress_label.pack(pady=5) progress_bar = ttk.Progressbar(root, orient="horizontal", length=300, mode="determinate") progress_bar.pack(pady=5) tk.Button(root, text="Exit", command=root.quit).pack(pady=10) root.mainloop() if __name__ == "__main__": main()
