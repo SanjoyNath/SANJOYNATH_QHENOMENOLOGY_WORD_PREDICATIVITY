@@ -1,0 +1,706 @@
+File 1 - installed_pypackages_versions_dependency_reports.py:
+
+1: (0)              import subprocess
+2: (0)              import pkg_resources
+3: (0)              def get_installed_packages():
+4: (4)                  # Get a list of installed packages
+5: (4)                  installed_packages = {pkg.key: pkg.version for pkg in pkg_resources.working_set}
+6: (4)                  return installed_packages
+7: (0)              def get_package_dependencies(package_name):
+8: (4)                  # Get the dependencies for a particular package using pip show
+9: (4)                  result = subprocess.run(['pip', 'show', package_name], capture_output=True, text=True)
+10: (4)                 dependencies = []
+11: (4)                 if result.returncode == 0:
+12: (8)                     for line in result.stdout.splitlines():
+13: (12)                        if line.startswith('Requires'):
+14: (16)                            dependencies = line.split(':')[1].strip().split(', ')
+15: (16)                            break
+16: (4)                 return dependencies
+17: (0)             def get_reverse_dependencies(package_name):
+18: (4)                 # Get reverse dependencies using pipdeptree
+19: (4)                 result = subprocess.run(['pipdeptree', '--reverse', '--packages', package_name], capture_output=True, text=True)
+20: (4)                 reverse_dependencies = []
+21: (4)                 if result.returncode == 0:
+22: (8)                     reverse_dependencies = result.stdout.strip().splitlines()
+23: (4)                 return reverse_dependencies
+24: (0)             def generate_report():
+25: (4)                 installed_packages = get_installed_packages()
+26: (4)                 report = []
+27: (4)                 for package, version in installed_packages.items():
+28: (8)                     dependencies = get_package_dependencies(package)
+29: (8)                     reverse_dependencies = get_reverse_dependencies(package)
+30: (8)                     report.append({
+31: (12)                        'Package': package,
+32: (12)                        'Version': version,
+33: (12)                        'Dependencies': dependencies,
+34: (12)                        'Reverse Dependencies': reverse_dependencies
+35: (8)                     })
+36: (4)                 return report
+37: (0)             def write_report_to_file(report, filename="package_report.txt"):
+38: (4)                 with open(filename, 'w') as file:
+39: (8)                     for package_info in report:
+40: (12)                        file.write(f"Package: {package_info['Package']}\n")
+41: (12)                        file.write(f"Version: {package_info['Version']}\n")
+42: (12)                        file.write(f"Dependencies: {', '.join(package_info['Dependencies']) if package_info['Dependencies'] else 'None'}\n")
+43: (12)                        file.write(f"Reverse Dependencies: {', '.join(package_info['Reverse Dependencies']) if package_info['Reverse Dependencies'] else 'None'}\n")
+44: (12)                        file.write("\n" + "-"*50 + "\n")
+45: (0)             if __name__ == '__main__':
+46: (4)                 report = generate_report()
+47: (4)                 write_report_to_file(report)
+48: (4)                 print("Report generated and saved to 'package_report.txt'.")
+
+----------------------------------------
+
+File 2 - refined_installed_pypackages_versions_dependency_reports.py:
+
+1: (0)              import subprocess
+2: (0)              import sys
+3: (0)              def get_installed_packages():
+4: (4)                  # Get a list of installed packages
+5: (4)                  installed_packages = {}
+6: (4)                  result = subprocess.run([sys.executable, '-m', 'pip', 'freeze'], capture_output=True, text=True)
+7: (4)                  if result.returncode == 0:
+8: (8)                      for line in result.stdout.splitlines():
+9: (12)                         package, version = line.split('==')
+10: (12)                        installed_packages[package] = version
+11: (4)                 return installed_packages
+12: (0)             def get_package_dependencies(package_name):
+13: (4)                 # Get the dependencies for a particular package using pip show
+14: (4)                 result = subprocess.run([sys.executable, '-m', 'pip', 'show', package_name], capture_output=True, text=True)
+15: (4)                 dependencies = []
+16: (4)                 if result.returncode == 0:
+17: (8)                     for line in result.stdout.splitlines():
+18: (12)                        if line.startswith('Requires'):
+19: (16)                            dependencies = line.split(':')[1].strip().split(', ')
+20: (16)                            break
+21: (4)                 return dependencies
+22: (0)             def generate_report():
+23: (4)                 installed_packages = get_installed_packages()
+24: (4)                 report = []
+25: (4)                 for package, version in installed_packages.items():
+26: (8)                     dependencies = get_package_dependencies(package)
+27: (8)                     report.append({
+28: (12)                        'Package': package,
+29: (12)                        'Version': version,
+30: (12)                        'Dependencies': dependencies if dependencies else 'None'
+31: (8)                     })
+32: (4)                 return report
+33: (0)             def write_report_to_file(report, filename="package_report.txt"):
+34: (4)                 with open(filename, 'w') as file:
+35: (8)                     for package_info in report:
+36: (12)                        file.write(f"Package: {package_info['Package']}\n")
+37: (12)                        file.write(f"Version: {package_info['Version']}\n")
+38: (12)                        file.write(f"Dependencies: {', '.join(package_info['Dependencies']) if isinstance(package_info['Dependencies'], list) else package_info['Dependencies']}\n")
+39: (12)                        file.write("\n" + "-"*50 + "\n")
+40: (0)             if __name__ == '__main__':
+41: (4)                 report = generate_report()
+42: (4)                 write_report_to_file(report)
+43: (4)                 print("Report generated and saved to 'package_report.txt'.")
+
+----------------------------------------
+
+File 3 - new_refined_installed_pypackages_versions_dependency_reports.py:
+
+1: (0)              import subprocess
+2: (0)              import sys
+3: (0)              def get_installed_packages():
+4: (4)                  # Get a list of installed packages
+5: (4)                  installed_packages = {}
+6: (4)                  result = subprocess.run([sys.executable, '-m', 'pip', 'freeze'], capture_output=True, text=True)
+7: (4)                  if result.returncode == 0:
+8: (8)                      for line in result.stdout.splitlines():
+9: (12)                         # Skip empty lines and lines that don't follow the "package==version" format
+10: (12)                        if '==' in line:
+11: (16)                            package, version = line.split('==')
+12: (16)                            installed_packages[package] = version
+13: (4)                 return installed_packages
+14: (0)             def get_package_dependencies(package_name):
+15: (4)                 # Get the dependencies for a particular package using pip show
+16: (4)                 result = subprocess.run([sys.executable, '-m', 'pip', 'show', package_name], capture_output=True, text=True)
+17: (4)                 dependencies = []
+18: (4)                 if result.returncode == 0:
+19: (8)                     for line in result.stdout.splitlines():
+20: (12)                        if line.startswith('Requires'):
+21: (16)                            dependencies = line.split(':')[1].strip().split(', ')
+22: (16)                            break
+23: (4)                 return dependencies
+24: (0)             def generate_report():
+25: (4)                 installed_packages = get_installed_packages()
+26: (4)                 report = []
+27: (4)                 for package, version in installed_packages.items():
+28: (8)                     dependencies = get_package_dependencies(package)
+29: (8)                     report.append({
+30: (12)                        'Package': package,
+31: (12)                        'Version': version,
+32: (12)                        'Dependencies': dependencies if dependencies else 'None'
+33: (8)                     })
+34: (4)                 return report
+35: (0)             def write_report_to_file(report, filename="package_report.txt"):
+36: (4)                 with open(filename, 'w') as file:
+37: (8)                     for package_info in report:
+38: (12)                        file.write(f"Package: {package_info['Package']}\n")
+39: (12)                        file.write(f"Version: {package_info['Version']}\n")
+40: (12)                        file.write(f"Dependencies: {', '.join(package_info['Dependencies']) if isinstance(package_info['Dependencies'], list) else package_info['Dependencies']}\n")
+41: (12)                        file.write("\n" + "-"*50 + "\n")
+42: (0)             if __name__ == '__main__':
+43: (4)                 report = generate_report()
+44: (4)                 write_report_to_file(report)
+45: (4)                 print("Report generated and saved to 'package_report.txt'.")
+
+----------------------------------------
+
+File 4 - pypdfsgraphcsextractions_fitz_with_pytorches.py:
+
+1: (0)              import fitz  # PyMuPDF
+2: (0)              doc = fitz.open("AISC STEEL CHART rev 11 (Draft copy).pdf")
+3: (0)              for page_num in range(len(doc)):
+4: (4)                  page = doc.load_page(page_num)
+5: (4)                  pix = page.get_pixmap()  # Convert page to image
+6: (4)                  pix.save(f"page_{page_num}.png")
+
+----------------------------------------
+
+File 5 - trying___pdfparsetreesgenerators.py:
+
+1: (0)              import fitz  # PyMuPDF
+2: (0)              import nltk
+3: (0)              from nltk.tokenize import sent_tokenize
+4: (0)              from nltk import pos_tag, word_tokenize
+5: (0)              from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+6: (0)              from transformers import pipeline
+7: (0)              import pdfplumber
+8: (0)              import os
+9: (0)              from tkinter import Tk, filedialog, messagebox
+10: (0)             # Initialize the HuggingFace tokenizer and model for parsing (you can use other models as well)
+11: (0)             model_name = "bert-base-uncased"  # Placeholder, choose an appropriate model for parsing
+12: (0)             tokenizer = AutoTokenizer.from_pretrained(model_name)
+13: (0)             model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+14: (0)             # Use Hugging Face's parsing pipeline
+15: (0)             parse_pipeline = pipeline("text2text-generation", model=model, tokenizer=tokenizer)
+16: (0)             # Function to extract text from PDF
+17: (0)             def extract_text_from_pdf(pdf_path):
+18: (4)                 with pdfplumber.open(pdf_path) as pdf:
+19: (8)                     text = ""
+20: (8)                     for page in pdf.pages:
+21: (12)                        text += page.extract_text() + "\n"
+22: (4)                 return text
+23: (0)             # Function to extract text from TXT
+24: (0)             def extract_text_from_txt(txt_path):
+25: (4)                 with open(txt_path, "r", encoding="utf-8") as file:
+26: (8)                     return file.read()
+27: (0)             # Function to create a PDF file with sentences and parse trees
+28: (0)             def create_pdf_with_parse_trees(sentences, output_pdf_path):
+29: (4)                 doc = fitz.open()  # Create a new PDF document
+30: (4)                 for sentence in sentences:
+31: (8)                     page = doc.new_page()  # Add a new page for each sentence
+32: (8)                     page.insert_text((72, 72), sentence, fontsize=12)  # Insert the sentence text
+33: (8)                     # Get parse tree for the sentence (use your NLP model for parsing)
+34: (8)                     parse_tree = generate_parse_tree(sentence)
+35: (8)                     page.insert_text((72, 150), f"Parse Tree:\n{parse_tree}", fontsize=10)  # Insert the parse tree
+36: (4)                 doc.save(output_pdf_path)  # Save the PDF
+37: (0)             # Function to generate a parse tree for a sentence (using HuggingFace model)
+38: (0)             def generate_parse_tree(sentence):
+39: (4)                 result = parse_pipeline(sentence)  # Generate parse tree or structure
+40: (4)                 return result[0]['generated_text']  # Placeholder, adapt based on your model's output
+41: (0)             # Main function to run the application
+42: (0)             def main():
+43: (4)                 # Initialize Tkinter dialog
+44: (4)                 root = Tk()
+45: (4)                 root.withdraw()
+46: (4)                 # Prompt user to select a file (either PDF or TXT)
+47: (4)                 file_path = filedialog.askopenfilename(title="Select a file", filetypes=[("Text Files", "*.txt"), ("PDF Files", "*.pdf")])
+48: (4)                 if not file_path:
+49: (8)                     messagebox.showerror("Error", "No file selected. Exiting.")
+50: (8)                     return
+51: (4)                 # Extract text from the file
+52: (4)                 if file_path.endswith('.pdf'):
+53: (8)                     text = extract_text_from_pdf(file_path)
+54: (4)                 else:
+55: (8)                     text = extract_text_from_txt(file_path)
+56: (4)                 # Tokenize the text into sentences
+57: (4)                 sentences = sent_tokenize(text)
+58: (4)                 # Create a PDF with parse trees for each sentence
+59: (4)                 output_pdf_path = "output_with_parse_trees.pdf"
+60: (4)                 create_pdf_with_parse_trees(sentences, output_pdf_path)
+61: (4)                 messagebox.showinfo("Success", f"PDF generated: {output_pdf_path}")
+62: (0)             if __name__ == "__main__":
+63: (4)                 main()
+64: (0)             # # # Explanation:
+65: (0)             # # # Text Extraction:
+66: (0)             # # # For PDF files, we use pdfplumber to extract the text.
+67: (0)             # # # For TXT files, we simply read the content directly.
+68: (0)             # # # Sentence Tokenization:
+69: (0)             # # # Using nltk.sent_tokenize() to split the text into sentences.
+70: (0)             # # # Parse Tree Generation:
+71: (0)             # # # Using a Hugging Face model and tokenizer to generate the parse tree for each sentence. This is just a basic placeholder, so you'll need a specific model that outputs detailed parse structures or tree representations.
+72: (0)             # # # Creating a PDF:
+73: (0)             # # # The create_pdf_with_parse_trees() function creates a new PDF, adding a page for each sentence. The sentence is placed on the page, followed by its corresponding parse tree.
+74: (0)             # # # GUI Interaction:
+75: (0)             # # # The program uses tkinter to prompt the user to select a file and then processes the file accordingly.
+76: (0)             # # # Notes:
+77: (0)             # # # Model Choice: In the code, we are using a generic BERT model (bert-base-uncased), which is not ideal for parsing. You can substitute it with a model specifically trained for parsing or use a dedicated parsing library like spaCy or another Hugging Face model designed for parsing tasks.
+78: (0)             # # # Sentence Parsing: The parse_pipeline is currently set up for text-to-text generation. You would need a proper model or method that provides parse tree structures in a usable format. Alternatively, use a specialized parser like spaCy for better results.
+
+----------------------------------------
+
+File 6 - trying___pretrained_pdfparsetreesgenerators.py:
+
+1: (0)              import fitz  # PyMuPDF
+2: (0)              import nltk
+3: (0)              from nltk.tokenize import sent_tokenize
+4: (0)              from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+5: (0)              from transformers import pipeline
+6: (0)              import pdfplumber
+7: (0)              import os
+8: (0)              from tkinter import Tk, filedialog, messagebox
+9: (0)              # Initialize the HuggingFace tokenizer and model for text generation (T5 for sequence-to-sequence tasks)
+10: (0)             model_name = "t5-small"  # Change this to any seq2seq model like "t5-base", "t5-large"
+11: (0)             tokenizer = AutoTokenizer.from_pretrained(model_name)
+12: (0)             model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+13: (0)             # Use Hugging Face's parsing pipeline for text generation
+14: (0)             parse_pipeline = pipeline("text2text-generation", model=model, tokenizer=tokenizer)
+15: (0)             # Function to extract text from PDF
+16: (0)             def extract_text_from_pdf(pdf_path):
+17: (4)                 with pdfplumber.open(pdf_path) as pdf:
+18: (8)                     text = ""
+19: (8)                     for page in pdf.pages:
+20: (12)                        text += page.extract_text() + "\n"
+21: (4)                 return text
+22: (0)             # Function to extract text from TXT file
+23: (0)             def extract_text_from_txt(txt_path):
+24: (4)                 with open(txt_path, "r", encoding="utf-8") as file:
+25: (8)                     return file.read()
+26: (0)             # # # # Function to generate a parse tree for a sentence using HuggingFace model
+27: (0)             # # # def generate_parse_tree(sentence):
+28: (4)                 # # # # Generate parse tree or sentence transformation using a text2text model
+29: (4)                 # # # result = parse_pipeline(sentence)
+30: (4)                 # # # return result[0]['generated_text']  # Adapt based on your model's output
+31: (0)             # Use Hugging Face's parsing pipeline for text generation with max_new_tokens
+32: (0)             parse_pipeline = pipeline("text2text-generation", model=model, tokenizer=tokenizer)
+33: (0)             # Function to generate a parse tree for a sentence using HuggingFace model
+34: (0)             def generate_parse_tree(sentence):
+35: (4)                 # Generate parse tree or sentence transformation using a text2text model
+36: (4)                 result = parse_pipeline(sentence, max_new_tokens=100)  # Set a limit for generated tokens
+37: (4)                 return result[0]['generated_text']  # Adapt based on your model's output    
+38: (0)             # Function to create a PDF with sentences and parse trees
+39: (0)             def create_pdf_with_parse_trees(sentences, output_pdf_path):
+40: (4)                 doc = fitz.open()  # Create a new PDF document
+41: (4)                 for sentence in sentences:
+42: (8)                     page = doc.new_page()  # Add a new page for each sentence
+43: (8)                     page.insert_text((72, 72), sentence, fontsize=12)  # Insert the sentence text
+44: (8)                     # Get parse tree for the sentence (use your NLP model for parsing)
+45: (8)                     parse_tree = generate_parse_tree(sentence)
+46: (8)                     page.insert_text((72, 150), f"Parse Tree:\n{parse_tree}", fontsize=10)  # Insert the parse tree
+47: (4)                 doc.save(output_pdf_path)  # Save the PDF
+48: (0)             # Main function to run the application
+49: (0)             def main():
+50: (4)                 # Initialize Tkinter dialog
+51: (4)                 root = Tk()
+52: (4)                 root.withdraw()
+53: (4)                 # Prompt user to select a file (either PDF or TXT)
+54: (4)                 file_path = filedialog.askopenfilename(title="Select a file", filetypes=[("Text Files", "*.txt"), ("PDF Files", "*.pdf")])
+55: (4)                 if not file_path:
+56: (8)                     messagebox.showerror("Error", "No file selected. Exiting.")
+57: (8)                     return
+58: (4)                 # Extract text from the file
+59: (4)                 if file_path.endswith('.pdf'):
+60: (8)                     text = extract_text_from_pdf(file_path)
+61: (4)                 else:
+62: (8)                     text = extract_text_from_txt(file_path)
+63: (4)                 # Tokenize the text into sentences
+64: (4)                 sentences = sent_tokenize(text)
+65: (4)                 # Create a PDF with parse trees for each sentence
+66: (4)                 output_pdf_path = "output_with_parse_trees.pdf"
+67: (4)                 create_pdf_with_parse_trees(sentences, output_pdf_path)
+68: (4)                 messagebox.showinfo("Success", f"PDF generated: {output_pdf_path}")
+69: (0)             if __name__ == "__main__":
+70: (4)                 main()
+71: (0)             # # # Key Adjustments and Explanation:
+72: (0)             # # # Model Change:
+73: (0)             # # # I switched the model to T5-small, which is a sequence-to-sequence model suited for tasks like text generation or transformation. The BERT model was not appropriate for generating parse trees because it's designed for masked language modeling.
+74: (0)             # # # PDF Text and Parse Tree Insertion:
+75: (0)             # # # Each sentence in the PDF is now displayed with its corresponding generated parse tree (or transformation result) from the T5 model.
+76: (0)             # # # Sentence Tokenization:
+77: (0)             # # # The nltk.sent_tokenize is used to split the input text into sentences. It is crucial when working with documents, as it breaks down the text into manageable units.
+78: (0)             # # # Tkinter for File Selection:
+79: (0)             # # # The filedialog.askopenfilename() provides a dialog box for selecting either a PDF or TXT file to process. It then extracts the text accordingly and processes it.
+80: (0)             # # # Model Output:
+81: (0)             # # # The function generate_parse_tree() takes each sentence and sends it to the T5 model via the HuggingFace pipeline. The output is the transformed or parsed text, which is inserted into the PDF.
+82: (0)             # # # Error Handling:
+83: (0)             # # # The script ensures that if no file is selected, it provides an error message and exits gracefully.
+
+----------------------------------------
+
+File 7 - new_trying___pretrained_pdfparsetreesgenerators.py:
+
+1: (0)              import fitz  # PyMuPDF
+2: (0)              import nltk
+3: (0)              from nltk.tokenize import sent_tokenize
+4: (0)              from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+5: (0)              from transformers import pipeline
+6: (0)              import pdfplumber
+7: (0)              import os
+8: (0)              from tkinter import Tk, filedialog, messagebox
+9: (0)              import torch  # Ensure latest PyTorch version is used
+10: (0)             # Initialize the HuggingFace tokenizer and model for text generation (T5 for sequence-to-sequence tasks)
+11: (0)             model_name = "t5-small"  # Change this to any seq2seq model like "t5-base", "t5-large"
+12: (0)             tokenizer = AutoTokenizer.from_pretrained(model_name)
+13: (0)             model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+14: (0)             # Ensure model is on the appropriate device (CPU or CUDA for GPU)
+15: (0)             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+16: (0)             model.to(device)
+17: (0)             # Use Hugging Face's parsing pipeline for text generation
+18: (0)             parse_pipeline = pipeline("text2text-generation", model=model, tokenizer=tokenizer, device=device.index if device.type == 'cuda' else -1)
+19: (0)             # Function to extract text from PDF
+20: (0)             def extract_text_from_pdf(pdf_path):
+21: (4)                 with pdfplumber.open(pdf_path) as pdf:
+22: (8)                     text = ""
+23: (8)                     for page in pdf.pages:
+24: (12)                        text += page.extract_text() + "\n"
+25: (4)                 return text
+26: (0)             # Function to extract text from TXT file
+27: (0)             def extract_text_from_txt(txt_path):
+28: (4)                 with open(txt_path, "r", encoding="utf-8") as file:
+29: (8)                     return file.read()
+30: (0)             # Function to generate a parse tree for a sentence using HuggingFace model
+31: (0)             def generate_parse_tree(sentence):
+32: (4)                 # Generate parse tree or sentence transformation using a text2text model
+33: (4)                 result = parse_pipeline(sentence, max_new_tokens=100)  # Set a limit for generated tokens
+34: (4)                 return result[0]['generated_text']  # Adapt based on your model's output
+35: (0)             # Function to create a PDF with sentences and parse trees
+36: (0)             def create_pdf_with_parse_trees(sentences, output_pdf_path):
+37: (4)                 doc = fitz.open()  # Create a new PDF document
+38: (4)                 for sentence in sentences:
+39: (8)                     page = doc.new_page()  # Add a new page for each sentence
+40: (8)                     page.insert_text((72, 72), sentence, fontsize=12)  # Insert the sentence text
+41: (8)                     # Get parse tree for the sentence (use your NLP model for parsing)
+42: (8)                     parse_tree = generate_parse_tree(sentence)
+43: (8)                     page.insert_text((72, 150), f"Parse Tree:\n{parse_tree}", fontsize=10)  # Insert the parse tree
+44: (4)                 doc.save(output_pdf_path)  # Save the PDF
+45: (0)             # Main function to run the application
+46: (0)             def main():
+47: (4)                 # Initialize Tkinter dialog
+48: (4)                 root = Tk()
+49: (4)                 root.withdraw()
+50: (4)                 # Prompt user to select a file (either PDF or TXT)
+51: (4)                 file_path = filedialog.askopenfilename(title="Select a file", filetypes=[("Text Files", "*.txt"), ("PDF Files", "*.pdf")])
+52: (4)                 if not file_path:
+53: (8)                     messagebox.showerror("Error", "No file selected. Exiting.")
+54: (8)                     return
+55: (4)                 # Extract text from the file
+56: (4)                 if file_path.endswith('.pdf'):
+57: (8)                     text = extract_text_from_pdf(file_path)
+58: (4)                 else:
+59: (8)                     text = extract_text_from_txt(file_path)
+60: (4)                 # Tokenize the text into sentences
+61: (4)                 sentences = sent_tokenize(text)
+62: (4)                 # Create a PDF with parse trees for each sentence
+63: (4)                 output_pdf_path = "output_with_parse_trees.pdf"
+64: (4)                 create_pdf_with_parse_trees(sentences, output_pdf_path)
+65: (4)                 messagebox.showinfo("Success", f"PDF generated: {output_pdf_path}")
+66: (0)             if __name__ == "__main__":
+67: (4)                 main()
+68: (0)             # # # Key Updates:
+69: (0)             # # # Device Management (torch.device):
+70: (0)             # # # The model is moved to either CPU or CUDA based on the availability of a GPU. This ensures proper tensor computation without warnings related to device mismanagement.
+71: (0)             # # # Pipeline Adjustment:
+72: (0)             # # # The pipeline is configured to work on the correct device by setting the device argument to either -1 for CPU or the corresponding GPU index if CUDA is available.
+73: (0)             # # # Tensor Management:
+74: (0)             # # # The model and tokenizer are moved to the selected device (cuda or cpu). This is done to avoid device mismatch errors when dealing with torch tensors in HuggingFace models.
+75: (0)             # # # Code Optimization:
+76: (0)             # # # We added max_new_tokens=100 in the parse_pipeline to limit the token generation and avoid potential overflows during text generation.
+77: (0)             # # # By following these steps, the code should work properly without errors or warnings, while using the latest tensor types from PyTorch.
+
+----------------------------------------
+
+File 8 - withprogressbars_logs_new_trying___pretrained_pdfparsetreesgenerators.py:
+
+1: (0)              import fitz  # PyMuPDF
+2: (0)              import nltk
+3: (0)              from nltk.tokenize import sent_tokenize
+4: (0)              from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+5: (0)              from transformers import pipeline
+6: (0)              import pdfplumber
+7: (0)              import os
+8: (0)              from tkinter import Tk, filedialog, messagebox
+9: (0)              import torch
+10: (0)             from tqdm import tqdm  # For the progress bar
+11: (0)             import logging
+12: (0)             # Set up logging for better error tracking
+13: (0)             logging.basicConfig(filename="process_log.log", level=logging.INFO,
+14: (20)                                format="%(asctime)s - %(levelname)s - %(message)s")
+15: (0)             # Initialize the HuggingFace tokenizer and model for text generation (T5 for sequence-to-sequence tasks)
+16: (0)             model_name = "t5-small"  # Change this to any seq2seq model like "t5-base", "t5-large"
+17: (0)             try:
+18: (4)                 tokenizer = AutoTokenizer.from_pretrained(model_name)
+19: (4)                 model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+20: (4)                 logging.info("Model and tokenizer loaded successfully.")
+21: (0)             except Exception as e:
+22: (4)                 logging.error(f"Error loading model and tokenizer: {e}")
+23: (4)                 raise
+24: (0)             # Ensure model is on the appropriate device (CPU or CUDA for GPU)
+25: (0)             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+26: (0)             model.to(device)
+27: (0)             # Use Hugging Face's parsing pipeline for text generation
+28: (0)             parse_pipeline = pipeline("text2text-generation", model=model, tokenizer=tokenizer, device=device.index if device.type == 'cuda' else -1)
+29: (0)             # Function to extract text from PDF
+30: (0)             def extract_text_from_pdf(pdf_path):
+31: (4)                 try:
+32: (8)                     with pdfplumber.open(pdf_path) as pdf:
+33: (12)                        text = ""
+34: (12)                        for page in pdf.pages:
+35: (16)                            text += page.extract_text() + "\n"
+36: (8)                     logging.info(f"Text extracted from PDF: {pdf_path}")
+37: (8)                     return text
+38: (4)                 except Exception as e:
+39: (8)                     logging.error(f"Error extracting text from PDF {pdf_path}: {e}")
+40: (8)                     raise
+41: (0)             # Function to extract text from TXT file
+42: (0)             def extract_text_from_txt(txt_path):
+43: (4)                 try:
+44: (8)                     with open(txt_path, "r", encoding="utf-8") as file:
+45: (12)                        text = file.read()
+46: (8)                     logging.info(f"Text extracted from TXT: {txt_path}")
+47: (8)                     return text
+48: (4)                 except Exception as e:
+49: (8)                     logging.error(f"Error extracting text from TXT {txt_path}: {e}")
+50: (8)                     raise
+51: (0)             # Function to generate a parse tree for a sentence using HuggingFace model
+52: (0)             def generate_parse_tree(sentence):
+53: (4)                 try:
+54: (8)                     result = parse_pipeline(sentence, max_new_tokens=100)  # Set a limit for generated tokens
+55: (8)                     return result[0]['generated_text']
+56: (4)                 except Exception as e:
+57: (8)                     logging.error(f"Error generating parse tree for sentence: {sentence} - {e}")
+58: (8)                     raise
+59: (0)             # Function to create a PDF with sentences and parse trees
+60: (0)             def create_pdf_with_parse_trees(sentences, output_pdf_path):
+61: (4)                 try:
+62: (8)                     doc = fitz.open()  # Create a new PDF document
+63: (8)                     for idx, sentence in enumerate(sentences):
+64: (12)                        page = doc.new_page()  # Add a new page for each sentence
+65: (12)                        page.insert_text((72, 72), sentence, fontsize=12)  # Insert the sentence text
+66: (12)                        # Get parse tree for the sentence (use your NLP model for parsing)
+67: (12)                        parse_tree = generate_parse_tree(sentence)
+68: (12)                        page.insert_text((72, 150), f"Parse Tree:\n{parse_tree}", fontsize=10)  # Insert the parse tree
+69: (12)                        # Update progress bar
+70: (12)                        progress_bar.update(1)
+71: (8)                     doc.save(output_pdf_path)  # Save the PDF
+72: (8)                     logging.info(f"PDF created successfully at: {output_pdf_path}")
+73: (4)                 except Exception as e:
+74: (8)                     logging.error(f"Error creating PDF with parse trees: {e}")
+75: (8)                     raise
+76: (0)             # Main function to run the application
+77: (0)             def main():
+78: (4)                 try:
+79: (8)                     # Initialize Tkinter dialog
+80: (8)                     root = Tk()
+81: (8)                     root.withdraw()
+82: (8)                     # Prompt user to select a file (either PDF or TXT)
+83: (8)                     file_path = filedialog.askopenfilename(title="Select a file", filetypes=[("Text Files", "*.txt"), ("PDF Files", "*.pdf")])
+84: (8)                     if not file_path:
+85: (12)                        messagebox.showerror("Error", "No file selected. Exiting.")
+86: (12)                        logging.warning("No file selected by the user.")
+87: (12)                        return
+88: (8)                     # Extract text from the file
+89: (8)                     if file_path.endswith('.pdf'):
+90: (12)                        text = extract_text_from_pdf(file_path)
+91: (8)                     else:
+92: (12)                        text = extract_text_from_txt(file_path)
+93: (8)                     # Tokenize the text into sentences
+94: (8)                     sentences = sent_tokenize(text)
+95: (8)                     total_sentences = len(sentences)
+96: (8)                     # Set up the progress bar
+97: (8)                     global progress_bar
+98: (8)                     progress_bar = tqdm(total=total_sentences, desc="Processing Sentences", unit="sentence")
+99: (8)                     # Create a PDF with parse trees for each sentence
+100: (8)                    output_pdf_path = "output_with_parse_trees.pdf"
+101: (8)                    create_pdf_with_parse_trees(sentences, output_pdf_path)
+102: (8)                    progress_bar.close()  # Close the progress bar once done
+103: (8)                    messagebox.showinfo("Success", f"PDF generated: {output_pdf_path}")
+104: (8)                    logging.info(f"PDF generated successfully: {output_pdf_path}")
+105: (4)                except Exception as e:
+106: (8)                    logging.error(f"An error occurred in the main function: {e}")
+107: (8)                    messagebox.showerror("Error", f"An error occurred: {e}")
+108: (0)            if __name__ == "__main__":
+109: (4)                main()
+
+----------------------------------------
+
+File 9 - 003_withprogressbars_logs_new_trying___pretrained_pdfparsetreesgenerators.py:
+
+1: (0)              import fitz  # PyMuPDF
+2: (0)              import nltk
+3: (0)              from nltk.tokenize import sent_tokenize
+4: (0)              from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+5: (0)              from transformers import pipeline
+6: (0)              import pdfplumber
+7: (0)              import os
+8: (0)              from tkinter import Tk, filedialog, messagebox
+9: (0)              import torch
+10: (0)             from tqdm import tqdm  # For the progress bar
+11: (0)             import logging
+12: (0)             # Set up logging for better error tracking
+13: (0)             logging.basicConfig(filename="process_log.log", level=logging.INFO,
+14: (20)                                format="%(asctime)s - %(levelname)s - %(message)s")
+15: (0)             # Initialize the HuggingFace tokenizer and model for text generation (T5 for sequence-to-sequence tasks)
+16: (0)             model_name = "t5-small"  # Change this to any seq2seq model like "t5-base", "t5-large"
+17: (0)             try:
+18: (4)                 tokenizer = AutoTokenizer.from_pretrained(model_name)
+19: (4)                 model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+20: (4)                 logging.info("Model and tokenizer loaded successfully.")
+21: (0)             except Exception as e:
+22: (4)                 logging.error(f"Error loading model and tokenizer: {e}")
+23: (4)                 raise
+24: (0)             # Ensure model is on the appropriate device (CPU or CUDA for GPU)
+25: (0)             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+26: (0)             model.to(device)
+27: (0)             # Use Hugging Face's parsing pipeline for text generation
+28: (0)             parse_pipeline = pipeline("text2text-generation", model=model, tokenizer=tokenizer, device=device.index if device.type == 'cuda' else -1)
+29: (0)             # Function to extract text from PDF
+30: (0)             def extract_text_from_pdf(pdf_path):
+31: (4)                 try:
+32: (8)                     with pdfplumber.open(pdf_path) as pdf:
+33: (12)                        text = ""
+34: (12)                        for page in pdf.pages:
+35: (16)                            text += page.extract_text() + "\n"
+36: (8)                     logging.info(f"Text extracted from PDF: {pdf_path}")
+37: (8)                     return text
+38: (4)                 except Exception as e:
+39: (8)                     logging.error(f"Error extracting text from PDF {pdf_path}: {e}")
+40: (8)                     raise
+41: (0)             # Function to extract text from TXT file
+42: (0)             def extract_text_from_txt(txt_path):
+43: (4)                 try:
+44: (8)                     with open(txt_path, "r", encoding="utf-8") as file:
+45: (12)                        text = file.read()
+46: (8)                     logging.info(f"Text extracted from TXT: {txt_path}")
+47: (8)                     return text
+48: (4)                 except Exception as e:
+49: (8)                     logging.error(f"Error extracting text from TXT {txt_path}: {e}")
+50: (8)                     raise
+51: (0)             # Function to generate a parse tree for a sentence using HuggingFace model
+52: (0)             def generate_parse_tree(sentence):
+53: (4)                 try:
+54: (8)                     result = parse_pipeline(sentence, max_new_tokens=100)  # Set a limit for generated tokens
+55: (8)                     return result[0]['generated_text']
+56: (4)                 except Exception as e:
+57: (8)                     logging.error(f"Error generating parse tree for sentence: {sentence} - {e}")
+58: (8)                     raise
+59: (0)             # Function to create a PDF with sentences and parse trees
+60: (0)             def create_pdf_with_parse_trees(sentences, output_pdf_path):
+61: (4)                 try:
+62: (8)                     doc = fitz.open()  # Create a new PDF document
+63: (8)                     for idx, sentence in enumerate(sentences):
+64: (12)                        page = doc.new_page()  # Add a new page for each sentence
+65: (12)                        page.insert_text((72, 72), sentence, fontsize=12)  # Insert the sentence text
+66: (12)                        # Get parse tree for the sentence (use your NLP model for parsing)
+67: (12)                        parse_tree = generate_parse_tree(sentence)
+68: (12)                        page.insert_text((72, 150), f"Parse Tree:\n{parse_tree}", fontsize=10)  # Insert the parse tree
+69: (12)                        # Update progress bar
+70: (12)                        progress_bar.update(1)  # Update progress bar here
+71: (8)                     doc.save(output_pdf_path)  # Save the PDF
+72: (8)                     logging.info(f"PDF created successfully at: {output_pdf_path}")
+73: (4)                 except Exception as e:
+74: (8)                     logging.error(f"Error creating PDF with parse trees: {e}")
+75: (8)                     raise
+76: (0)             # Main function to run the application
+77: (0)             def main():
+78: (4)                 try:
+79: (8)                     # Initialize Tkinter dialog
+80: (8)                     root = Tk()
+81: (8)                     root.withdraw()
+82: (8)                     # Prompt user to select a file (either PDF or TXT)
+83: (8)                     file_path = filedialog.askopenfilename(title="Select a file", filetypes=[("Text Files", "*.txt"), ("PDF Files", "*.pdf")])
+84: (8)                     if not file_path:
+85: (12)                        messagebox.showerror("Error", "No file selected. Exiting.")
+86: (12)                        logging.warning("No file selected by the user.")
+87: (12)                        return
+88: (8)                     # Extract text from the file
+89: (8)                     if file_path.endswith('.pdf'):
+90: (12)                        text = extract_text_from_pdf(file_path)
+91: (8)                     else:
+92: (12)                        text = extract_text_from_txt(file_path)
+93: (8)                     # Tokenize the text into sentences
+94: (8)                     sentences = sent_tokenize(text)
+95: (8)                     total_sentences = len(sentences)
+96: (8)                     # Set up the progress bar (correctly placed before processing begins)
+97: (8)                     global progress_bar
+98: (8)                     progress_bar = tqdm(total=total_sentences, desc="Processing Sentences", unit="sentence")
+99: (8)                     # Create a PDF with parse trees for each sentence
+100: (8)                    output_pdf_path = "output_with_parse_trees.pdf"
+101: (8)                    create_pdf_with_parse_trees(sentences, output_pdf_path)
+102: (8)                    progress_bar.close()  # Close the progress bar once done
+103: (8)                    messagebox.showinfo("Success", f"PDF generated: {output_pdf_path}")
+104: (8)                    logging.info(f"PDF generated successfully: {output_pdf_path}")
+105: (4)                except Exception as e:
+106: (8)                    logging.error(f"An error occurred in the main function: {e}")
+107: (8)                    messagebox.showerror("Error", f"An error occurred: {e}")
+108: (0)            if __name__ == "__main__":
+109: (4)                main()
+
+----------------------------------------
+
+File 10 - SANJOYNATHQHENOMENOLOGYGEOMETRIFYINGTRIGONOMETRYCOMBINER_aligner_20_characters_for_pythons_codes.py:
+
+1: (0)              import os
+2: (0)              from datetime import datetime
+3: (0)              def get_file_info(root_folder):
+4: (4)                  file_info_list = []
+5: (4)                  for root, dirs, files in os.walk(root_folder):
+6: (8)                      for file in files:
+7: (12)                         try:
+8: (16)                             # Check if the file is a Python file
+9: (16)                             if file.endswith('.py'):
+10: (20)                                file_path = os.path.join(root, file)
+11: (20)                                # Get file times
+12: (20)                                creation_time = datetime.fromtimestamp(os.path.getctime(file_path))
+13: (20)                                modified_time = datetime.fromtimestamp(os.path.getmtime(file_path))
+14: (20)                                # Get file extension
+15: (20)                                file_extension = os.path.splitext(file)[1].lower()
+16: (20)                                # Append file info to list
+17: (20)                                file_info_list.append([file, file_path, creation_time, modified_time, file_extension, root])
+18: (12)                        except Exception as e:
+19: (16)                            print(f"Error processing file {file}: {e}")
+20: (4)                 # Sort the files by multiple criteria
+21: (4)                 file_info_list.sort(key=lambda x: (x[2], x[3], len(x[0]), x[4]))  # Sort by creation, modification time, name length, extension
+22: (4)                 return file_info_list
+23: (0)             def process_file(file_info_list):
+24: (4)                 combined_output = []
+25: (4)                 for idx, (file_name, file_path, creation_time, modified_time, file_extension, root) in enumerate(file_info_list):
+26: (8)                     with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+27: (12)                        content = f.read()
+28: (12)                        # Remove Python comments and blank lines
+29: (10)                      ###  content = "\n".join([line for line in content.split('\n') if line.strip() and not line.strip().startswith("#")])
+30: (12)                        content = "\n".join([line for line in content.split('\n') if line.strip() ])###and not line.strip().startswith("#")
+31: (12)                        # Replace tabs with spaces
+32: (12)                        content = content.replace('\t', '    ')
+33: (12)                        # Process each line
+34: (12)                        processed_lines = []
+35: (12)                        for i, line in enumerate(content.split('\n')):
+36: (16)                            # Count the number of starting blank spaces
+37: (16)                            leading_spaces = len(line) - len(line.lstrip(' '))
+38: (16)                            # Create the line with line number and leading spaces count
+39: (16)                            line_number_str = f"{i+1}: ({leading_spaces})"
+40: (16)                            # Calculate padding to align the original code at the 61st character
+41: (16)                            padding = ' ' * (20 - len(line_number_str))
+42: (16)                            processed_line = f"{line_number_str}{padding}{line}"
+43: (16)                            processed_lines.append(processed_line)
+44: (12)                        content_with_line_numbers = "\n".join(processed_lines)
+45: (12)                        # Add file listing order and line number
+46: (12)                        combined_output.append(f"File {idx + 1} - {file_name}:\n")
+47: (12)                        combined_output.append(content_with_line_numbers)
+48: (12)                        combined_output.append("\n" + "-"*40 + "\n")
+49: (4)                 return combined_output
+50: (0)             # Set the root folder path
+51: (0)             root_folder_path = '.'  # Set this to the desired folder
+52: (0)             # Get file information and process files
+53: (0)             file_info_list = get_file_info(root_folder_path)
+54: (0)             combined_output = process_file(file_info_list)
+55: (0)             # Save the processed data to an output file
+56: (0)             output_file = 'SANJOYNATHQHENOMENOLOGYGEOMETRIFYINGTRIGONOMETRY_combined_python_files_20_chars.txt'
+57: (0)             with open(output_file, 'w', encoding='utf-8') as logfile:
+58: (4)                 logfile.write("\n".join(combined_output))
+59: (0)             print(f"Processed file info logged to {output_file}")
+
+----------------------------------------
