@@ -1,0 +1,2046 @@
+File 1 - . \camera.py:
+
+1: (0)              """A camera converts the mobjects contained in a Scene into an array of pixels."""
+2: (0)              from __future__ import annotations
+3: (0)              __all__ = ["Camera", "BackgroundColoredVMobjectDisplayer"]
+4: (0)              import copy
+5: (0)              import itertools as it
+6: (0)              import operator as op
+7: (0)              import pathlib
+8: (0)              from functools import reduce
+9: (0)              from typing import Any, Callable, Iterable
+10: (0)             import cairo
+11: (0)             import numpy as np
+12: (0)             from PIL import Image
+13: (0)             from scipy.spatial.distance import pdist
+14: (0)             from .. import config, logger
+15: (0)             from ..constants import *
+16: (0)             from ..mobject.mobject import Mobject
+17: (0)             from ..mobject.types.image_mobject import AbstractImageMobject
+18: (0)             from ..mobject.types.point_cloud_mobject import PMobject
+19: (0)             from ..mobject.types.vectorized_mobject import VMobject
+20: (0)             from ..utils.color import ManimColor, ParsableManimColor, color_to_int_rgba
+21: (0)             from ..utils.family import extract_mobject_family_members
+22: (0)             from ..utils.images import get_full_raster_image_path
+23: (0)             from ..utils.iterables import list_difference_update
+24: (0)             from ..utils.space_ops import angle_of_vector
+25: (0)             LINE_JOIN_MAP = {
+26: (4)                 LineJointType.AUTO: None,  # TODO: this could be improved
+27: (4)                 LineJointType.ROUND: cairo.LineJoin.ROUND,
+28: (4)                 LineJointType.BEVEL: cairo.LineJoin.BEVEL,
+29: (4)                 LineJointType.MITER: cairo.LineJoin.MITER,
+30: (0)             }
+31: (0)             CAP_STYLE_MAP = {
+32: (4)                 CapStyleType.AUTO: None,  # TODO: this could be improved
+33: (4)                 CapStyleType.ROUND: cairo.LineCap.ROUND,
+34: (4)                 CapStyleType.BUTT: cairo.LineCap.BUTT,
+35: (4)                 CapStyleType.SQUARE: cairo.LineCap.SQUARE,
+36: (0)             }
+37: (0)             class Camera:
+38: (4)                 """Base camera class.
+39: (4)                 This is the object which takes care of what exactly is displayed
+40: (4)                 on screen at any given moment.
+41: (4)                 Parameters
+42: (4)                 ----------
+43: (4)                 background_image
+44: (8)                     The path to an image that should be the background image.
+45: (8)                     If not set, the background is filled with :attr:`self.background_color`
+46: (4)                 background
+47: (8)                     What :attr:`background` is set to. By default, ``None``.
+48: (4)                 pixel_height
+49: (8)                     The height of the scene in pixels.
+50: (4)                 pixel_width
+51: (8)                     The width of the scene in pixels.
+52: (4)                 kwargs
+53: (8)                     Additional arguments (``background_color``, ``background_opacity``)
+54: (8)                     to be set.
+55: (4)                 """
+56: (4)                 def __init__(
+57: (8)                     self,
+58: (8)                     background_image: str | None = None,
+59: (8)                     frame_center: np.ndarray = ORIGIN,
+60: (8)                     image_mode: str = "RGBA",
+61: (8)                     n_channels: int = 4,
+62: (8)                     pixel_array_dtype: str = "uint8",
+63: (8)                     cairo_line_width_multiple: float = 0.01,
+64: (8)                     use_z_index: bool = True,
+65: (8)                     background: np.ndarray | None = None,
+66: (8)                     pixel_height: int | None = None,
+67: (8)                     pixel_width: int | None = None,
+68: (8)                     frame_height: float | None = None,
+69: (8)                     frame_width: float | None = None,
+70: (8)                     frame_rate: float | None = None,
+71: (8)                     background_color: ParsableManimColor | None = None,
+72: (8)                     background_opacity: float | None = None,
+73: (8)                     **kwargs,
+74: (4)                 ):
+75: (8)                     self.background_image = background_image
+76: (8)                     self.frame_center = frame_center
+77: (8)                     self.image_mode = image_mode
+78: (8)                     self.n_channels = n_channels
+79: (8)                     self.pixel_array_dtype = pixel_array_dtype
+80: (8)                     self.cairo_line_width_multiple = cairo_line_width_multiple
+81: (8)                     self.use_z_index = use_z_index
+82: (8)                     self.background = background
+83: (8)                     if pixel_height is None:
+84: (12)                        pixel_height = config["pixel_height"]
+85: (8)                     self.pixel_height = pixel_height
+86: (8)                     if pixel_width is None:
+87: (12)                        pixel_width = config["pixel_width"]
+88: (8)                     self.pixel_width = pixel_width
+89: (8)                     if frame_height is None:
+90: (12)                        frame_height = config["frame_height"]
+91: (8)                     self.frame_height = frame_height
+92: (8)                     if frame_width is None:
+93: (12)                        frame_width = config["frame_width"]
+94: (8)                     self.frame_width = frame_width
+95: (8)                     if frame_rate is None:
+96: (12)                        frame_rate = config["frame_rate"]
+97: (8)                     self.frame_rate = frame_rate
+98: (8)                     if background_color is None:
+99: (12)                        self._background_color = ManimColor.parse(config["background_color"])
+100: (8)                    else:
+101: (12)                       self._background_color = ManimColor.parse(background_color)
+102: (8)                    if background_opacity is None:
+103: (12)                       self._background_opacity = config["background_opacity"]
+104: (8)                    else:
+105: (12)                       self._background_opacity = background_opacity
+106: (8)                    # This one is in the same boat as the above, but it doesn't have the
+107: (8)                    # same name as the corresponding key so it has to be handled on its own
+108: (8)                    self.max_allowable_norm = config["frame_width"]
+109: (8)                    self.rgb_max_val = np.iinfo(self.pixel_array_dtype).max
+110: (8)                    self.pixel_array_to_cairo_context = {}
+111: (8)                    # Contains the correct method to process a list of Mobjects of the
+112: (8)                    # corresponding class.  If a Mobject is not an instance of a class in
+113: (8)                    # this dict (or an instance of a class that inherits from a class in
+114: (8)                    # this dict), then it cannot be rendered.
+115: (8)                    self.init_background()
+116: (8)                    self.resize_frame_shape()
+117: (8)                    self.reset()
+118: (4)                def __deepcopy__(self, memo):
+119: (8)                    # This is to address a strange bug where deepcopying
+120: (8)                    # will result in a segfault, which is somehow related
+121: (8)                    # to the aggdraw library
+122: (8)                    self.canvas = None
+123: (8)                    return copy.copy(self)
+124: (4)                @property
+125: (4)                def background_color(self):
+126: (8)                    return self._background_color
+127: (4)                @background_color.setter
+128: (4)                def background_color(self, color):
+129: (8)                    self._background_color = color
+130: (8)                    self.init_background()
+131: (4)                @property
+132: (4)                def background_opacity(self):
+133: (8)                    return self._background_opacity
+134: (4)                @background_opacity.setter
+135: (4)                def background_opacity(self, alpha):
+136: (8)                    self._background_opacity = alpha
+137: (8)                    self.init_background()
+138: (4)                def type_or_raise(self, mobject: Mobject):
+139: (8)                    """Return the type of mobject, if it is a type that can be rendered.
+140: (8)                    If `mobject` is an instance of a class that inherits from a class that
+141: (8)                    can be rendered, return the super class.  For example, an instance of a
+142: (8)                    Square is also an instance of VMobject, and these can be rendered.
+143: (8)                    Therefore, `type_or_raise(Square())` returns True.
+144: (8)                    Parameters
+145: (8)                    ----------
+146: (8)                    mobject
+147: (12)                       The object to take the type of.
+148: (8)                    Notes
+149: (8)                    -----
+150: (8)                    For a list of classes that can currently be rendered, see :meth:`display_funcs`.
+151: (8)                    Returns
+152: (8)                    -------
+153: (8)                    Type[:class:`~.Mobject`]
+154: (12)                       The type of mobjects, if it can be rendered.
+155: (8)                    Raises
+156: (8)                    ------
+157: (8)                    :exc:`TypeError`
+158: (12)                       When mobject is not an instance of a class that can be rendered.
+159: (8)                    """
+160: (8)                    self.display_funcs = {
+161: (12)                       VMobject: self.display_multiple_vectorized_mobjects,
+162: (12)                       PMobject: self.display_multiple_point_cloud_mobjects,
+163: (12)                       AbstractImageMobject: self.display_multiple_image_mobjects,
+164: (12)                       Mobject: lambda batch, pa: batch,  # Do nothing
+165: (8)                    }
+166: (8)                    # We have to check each type in turn because we are dealing with
+167: (8)                    # super classes.  For example, if square = Square(), then
+168: (8)                    # type(square) != VMobject, but isinstance(square, VMobject) == True.
+169: (8)                    for _type in self.display_funcs:
+170: (12)                       if isinstance(mobject, _type):
+171: (16)                           return _type
+172: (8)                    raise TypeError(f"Displaying an object of class {_type} is not supported")
+173: (4)                def reset_pixel_shape(self, new_height: float, new_width: float):
+174: (8)                    """This method resets the height and width
+175: (8)                    of a single pixel to the passed new_height and new_width.
+176: (8)                    Parameters
+177: (8)                    ----------
+178: (8)                    new_height
+179: (12)                       The new height of the entire scene in pixels
+180: (8)                    new_width
+181: (12)                       The new width of the entire scene in pixels
+182: (8)                    """
+183: (8)                    self.pixel_width = new_width
+184: (8)                    self.pixel_height = new_height
+185: (8)                    self.init_background()
+186: (8)                    self.resize_frame_shape()
+187: (8)                    self.reset()
+188: (4)                def resize_frame_shape(self, fixed_dimension: int = 0):
+189: (8)                    """
+190: (8)                    Changes frame_shape to match the aspect ratio
+191: (8)                    of the pixels, where fixed_dimension determines
+192: (8)                    whether frame_height or frame_width
+193: (8)                    remains fixed while the other changes accordingly.
+194: (8)                    Parameters
+195: (8)                    ----------
+196: (8)                    fixed_dimension
+197: (12)                       If 0, height is scaled with respect to width
+198: (12)                       else, width is scaled with respect to height.
+199: (8)                    """
+200: (8)                    pixel_height = self.pixel_height
+201: (8)                    pixel_width = self.pixel_width
+202: (8)                    frame_height = self.frame_height
+203: (8)                    frame_width = self.frame_width
+204: (8)                    aspect_ratio = pixel_width / pixel_height
+205: (8)                    if fixed_dimension == 0:
+206: (12)                       frame_height = frame_width / aspect_ratio
+207: (8)                    else:
+208: (12)                       frame_width = aspect_ratio * frame_height
+209: (8)                    self.frame_height = frame_height
+210: (8)                    self.frame_width = frame_width
+211: (4)                def init_background(self):
+212: (8)                    """Initialize the background.
+213: (8)                    If self.background_image is the path of an image
+214: (8)                    the image is set as background; else, the default
+215: (8)                    background color fills the background.
+216: (8)                    """
+217: (8)                    height = self.pixel_height
+218: (8)                    width = self.pixel_width
+219: (8)                    if self.background_image is not None:
+220: (12)                       path = get_full_raster_image_path(self.background_image)
+221: (12)                       image = Image.open(path).convert(self.image_mode)
+222: (12)                       # TODO, how to gracefully handle backgrounds
+223: (12)                       # with different sizes?
+224: (12)                       self.background = np.array(image)[:height, :width]
+225: (12)                       self.background = self.background.astype(self.pixel_array_dtype)
+226: (8)                    else:
+227: (12)                       background_rgba = color_to_int_rgba(
+228: (16)                           self.background_color,
+229: (16)                           self.background_opacity,
+230: (12)                       )
+231: (12)                       self.background = np.zeros(
+232: (16)                           (height, width, self.n_channels),
+233: (16)                           dtype=self.pixel_array_dtype,
+234: (12)                       )
+235: (12)                       self.background[:, :] = background_rgba
+236: (4)                def get_image(self, pixel_array: np.ndarray | list | tuple | None = None):
+237: (8)                    """Returns an image from the passed
+238: (8)                    pixel array, or from the current frame
+239: (8)                    if the passed pixel array is none.
+240: (8)                    Parameters
+241: (8)                    ----------
+242: (8)                    pixel_array
+243: (12)                       The pixel array from which to get an image, by default None
+244: (8)                    Returns
+245: (8)                    -------
+246: (8)                    PIL.Image
+247: (12)                       The PIL image of the array.
+248: (8)                    """
+249: (8)                    if pixel_array is None:
+250: (12)                       pixel_array = self.pixel_array
+251: (8)                    return Image.fromarray(pixel_array, mode=self.image_mode)
+252: (4)                def convert_pixel_array(
+253: (8)                    self, pixel_array: np.ndarray | list | tuple, convert_from_floats: bool = False
+254: (4)                ):
+255: (8)                    """Converts a pixel array from values that have floats in then
+256: (8)                    to proper RGB values.
+257: (8)                    Parameters
+258: (8)                    ----------
+259: (8)                    pixel_array
+260: (12)                       Pixel array to convert.
+261: (8)                    convert_from_floats
+262: (12)                       Whether or not to convert float values to ints, by default False
+263: (8)                    Returns
+264: (8)                    -------
+265: (8)                    np.array
+266: (12)                       The new, converted pixel array.
+267: (8)                    """
+268: (8)                    retval = np.array(pixel_array)
+269: (8)                    if convert_from_floats:
+270: (12)                       retval = np.apply_along_axis(
+271: (16)                           lambda f: (f * self.rgb_max_val).astype(self.pixel_array_dtype),
+272: (16)                           2,
+273: (16)                           retval,
+274: (12)                       )
+275: (8)                    return retval
+276: (4)                def set_pixel_array(
+277: (8)                    self, pixel_array: np.ndarray | list | tuple, convert_from_floats: bool = False
+278: (4)                ):
+279: (8)                    """Sets the pixel array of the camera to the passed pixel array.
+280: (8)                    Parameters
+281: (8)                    ----------
+282: (8)                    pixel_array
+283: (12)                       The pixel array to convert and then set as the camera's pixel array.
+284: (8)                    convert_from_floats
+285: (12)                       Whether or not to convert float values to proper RGB values, by default False
+286: (8)                    """
+287: (8)                    converted_array = self.convert_pixel_array(pixel_array, convert_from_floats)
+288: (8)                    if not (
+289: (12)                       hasattr(self, "pixel_array")
+290: (12)                       and self.pixel_array.shape == converted_array.shape
+291: (8)                    ):
+292: (12)                       self.pixel_array = converted_array
+293: (8)                    else:
+294: (12)                       # Set in place
+295: (12)                       self.pixel_array[:, :, :] = converted_array[:, :, :]
+296: (4)                def set_background(
+297: (8)                    self, pixel_array: np.ndarray | list | tuple, convert_from_floats: bool = False
+298: (4)                ):
+299: (8)                    """Sets the background to the passed pixel_array after converting
+300: (8)                    to valid RGB values.
+301: (8)                    Parameters
+302: (8)                    ----------
+303: (8)                    pixel_array
+304: (12)                       The pixel array to set the background to.
+305: (8)                    convert_from_floats
+306: (12)                       Whether or not to convert floats values to proper RGB valid ones, by default False
+307: (8)                    """
+308: (8)                    self.background = self.convert_pixel_array(pixel_array, convert_from_floats)
+309: (4)                # TODO, this should live in utils, not as a method of Camera
+310: (4)                def make_background_from_func(
+311: (8)                    self, coords_to_colors_func: Callable[[np.ndarray], np.ndarray]
+312: (4)                ):
+313: (8)                    """
+314: (8)                    Makes a pixel array for the background by using coords_to_colors_func to determine each pixel's color. Each input
+315: (8)                    pixel's color. Each input to coords_to_colors_func is an (x, y) pair in space (in ordinary space coordinates; not
+316: (8)                    pixel coordinates), and each output is expected to be an RGBA array of 4 floats.
+317: (8)                    Parameters
+318: (8)                    ----------
+319: (8)                    coords_to_colors_func
+320: (12)                       The function whose input is an (x,y) pair of coordinates and
+321: (12)                       whose return values must be the colors for that point
+322: (8)                    Returns
+323: (8)                    -------
+324: (8)                    np.array
+325: (12)                       The pixel array which can then be passed to set_background.
+326: (8)                    """
+327: (8)                    logger.info("Starting set_background")
+328: (8)                    coords = self.get_coords_of_all_pixels()
+329: (8)                    new_background = np.apply_along_axis(coords_to_colors_func, 2, coords)
+330: (8)                    logger.info("Ending set_background")
+331: (8)                    return self.convert_pixel_array(new_background, convert_from_floats=True)
+332: (4)                def set_background_from_func(
+333: (8)                    self, coords_to_colors_func: Callable[[np.ndarray], np.ndarray]
+334: (4)                ):
+335: (8)                    """
+336: (8)                    Sets the background to a pixel array using coords_to_colors_func to determine each pixel's color. Each input
+337: (8)                    pixel's color. Each input to coords_to_colors_func is an (x, y) pair in space (in ordinary space coordinates; not
+338: (8)                    pixel coordinates), and each output is expected to be an RGBA array of 4 floats.
+339: (8)                    Parameters
+340: (8)                    ----------
+341: (8)                    coords_to_colors_func
+342: (12)                       The function whose input is an (x,y) pair of coordinates and
+343: (12)                       whose return values must be the colors for that point
+344: (8)                    """
+345: (8)                    self.set_background(self.make_background_from_func(coords_to_colors_func))
+346: (4)                def reset(self):
+347: (8)                    """Resets the camera's pixel array
+348: (8)                    to that of the background
+349: (8)                    Returns
+350: (8)                    -------
+351: (8)                    Camera
+352: (12)                       The camera object after setting the pixel array.
+353: (8)                    """
+354: (8)                    self.set_pixel_array(self.background)
+355: (8)                    return self
+356: (4)                def set_frame_to_background(self, background):
+357: (8)                    self.set_pixel_array(background)
+358: (4)                ####
+359: (4)                def get_mobjects_to_display(
+360: (8)                    self,
+361: (8)                    mobjects: Iterable[Mobject],
+362: (8)                    include_submobjects: bool = True,
+363: (8)                    excluded_mobjects: list | None = None,
+364: (4)                ):
+365: (8)                    """Used to get the list of mobjects to display
+366: (8)                    with the camera.
+367: (8)                    Parameters
+368: (8)                    ----------
+369: (8)                    mobjects
+370: (12)                       The Mobjects
+371: (8)                    include_submobjects
+372: (12)                       Whether or not to include the submobjects of mobjects, by default True
+373: (8)                    excluded_mobjects
+374: (12)                       Any mobjects to exclude, by default None
+375: (8)                    Returns
+376: (8)                    -------
+377: (8)                    list
+378: (12)                       list of mobjects
+379: (8)                    """
+380: (8)                    if include_submobjects:
+381: (12)                       mobjects = extract_mobject_family_members(
+382: (16)                           mobjects,
+383: (16)                           use_z_index=self.use_z_index,
+384: (16)                           only_those_with_points=True,
+385: (12)                       )
+386: (12)                       if excluded_mobjects:
+387: (16)                           all_excluded = extract_mobject_family_members(
+388: (20)                               excluded_mobjects,
+389: (20)                               use_z_index=self.use_z_index,
+390: (16)                           )
+391: (16)                           mobjects = list_difference_update(mobjects, all_excluded)
+392: (8)                    return list(mobjects)
+393: (4)                def is_in_frame(self, mobject: Mobject):
+394: (8)                    """Checks whether the passed mobject is in
+395: (8)                    frame or not.
+396: (8)                    Parameters
+397: (8)                    ----------
+398: (8)                    mobject
+399: (12)                       The mobject for which the checking needs to be done.
+400: (8)                    Returns
+401: (8)                    -------
+402: (8)                    bool
+403: (12)                       True if in frame, False otherwise.
+404: (8)                    """
+405: (8)                    fc = self.frame_center
+406: (8)                    fh = self.frame_height
+407: (8)                    fw = self.frame_width
+408: (8)                    return not reduce(
+409: (12)                       op.or_,
+410: (12)                       [
+411: (16)                           mobject.get_right()[0] < fc[0] - fw / 2,
+412: (16)                           mobject.get_bottom()[1] > fc[1] + fh / 2,
+413: (16)                           mobject.get_left()[0] > fc[0] + fw / 2,
+414: (16)                           mobject.get_top()[1] < fc[1] - fh / 2,
+415: (12)                       ],
+416: (8)                    )
+417: (4)                def capture_mobject(self, mobject: Mobject, **kwargs: Any):
+418: (8)                    """Capture mobjects by storing it in :attr:`pixel_array`.
+419: (8)                    This is a single-mobject version of :meth:`capture_mobjects`.
+420: (8)                    Parameters
+421: (8)                    ----------
+422: (8)                    mobject
+423: (12)                       Mobject to capture.
+424: (8)                    kwargs
+425: (12)                       Keyword arguments to be passed to :meth:`get_mobjects_to_display`.
+426: (8)                    """
+427: (8)                    return self.capture_mobjects([mobject], **kwargs)
+428: (4)                def capture_mobjects(self, mobjects: Iterable[Mobject], **kwargs):
+429: (8)                    """Capture mobjects by printing them on :attr:`pixel_array`.
+430: (8)                    This is the essential function that converts the contents of a Scene
+431: (8)                    into an array, which is then converted to an image or video.
+432: (8)                    Parameters
+433: (8)                    ----------
+434: (8)                    mobjects
+435: (12)                       Mobjects to capture.
+436: (8)                    kwargs
+437: (12)                       Keyword arguments to be passed to :meth:`get_mobjects_to_display`.
+438: (8)                    Notes
+439: (8)                    -----
+440: (8)                    For a list of classes that can currently be rendered, see :meth:`display_funcs`.
+441: (8)                    """
+442: (8)                    # The mobjects will be processed in batches (or runs) of mobjects of
+443: (8)                    # the same type.  That is, if the list mobjects contains objects of
+444: (8)                    # types [VMobject, VMobject, VMobject, PMobject, PMobject, VMobject],
+445: (8)                    # then they will be captured in three batches: [VMobject, VMobject,
+446: (8)                    # VMobject], [PMobject, PMobject], and [VMobject].  This must be done
+447: (8)                    # without altering their order.  it.groupby computes exactly this
+448: (8)                    # partition while at the same time preserving order.
+449: (8)                    mobjects = self.get_mobjects_to_display(mobjects, **kwargs)
+450: (8)                    for group_type, group in it.groupby(mobjects, self.type_or_raise):
+451: (12)                       self.display_funcs[group_type](list(group), self.pixel_array)
+452: (4)                # Methods associated with svg rendering
+453: (4)                # NOTE: None of the methods below have been mentioned outside of their definitions. Their DocStrings are not as
+454: (4)                # detailed as possible.
+455: (4)                def get_cached_cairo_context(self, pixel_array: np.ndarray):
+456: (8)                    """Returns the cached cairo context of the passed
+457: (8)                    pixel array if it exists, and None if it doesn't.
+458: (8)                    Parameters
+459: (8)                    ----------
+460: (8)                    pixel_array
+461: (12)                       The pixel array to check.
+462: (8)                    Returns
+463: (8)                    -------
+464: (8)                    cairo.Context
+465: (12)                       The cached cairo context.
+466: (8)                    """
+467: (8)                    return self.pixel_array_to_cairo_context.get(id(pixel_array), None)
+468: (4)                def cache_cairo_context(self, pixel_array: np.ndarray, ctx: cairo.Context):
+469: (8)                    """Caches the passed Pixel array into a Cairo Context
+470: (8)                    Parameters
+471: (8)                    ----------
+472: (8)                    pixel_array
+473: (12)                       The pixel array to cache
+474: (8)                    ctx
+475: (12)                       The context to cache it into.
+476: (8)                    """
+477: (8)                    self.pixel_array_to_cairo_context[id(pixel_array)] = ctx
+478: (4)                def get_cairo_context(self, pixel_array: np.ndarray):
+479: (8)                    """Returns the cairo context for a pixel array after
+480: (8)                    caching it to self.pixel_array_to_cairo_context
+481: (8)                    If that array has already been cached, it returns the
+482: (8)                    cached version instead.
+483: (8)                    Parameters
+484: (8)                    ----------
+485: (8)                    pixel_array
+486: (12)                       The Pixel array to get the cairo context of.
+487: (8)                    Returns
+488: (8)                    -------
+489: (8)                    cairo.Context
+490: (12)                       The cairo context of the pixel array.
+491: (8)                    """
+492: (8)                    cached_ctx = self.get_cached_cairo_context(pixel_array)
+493: (8)                    if cached_ctx:
+494: (12)                       return cached_ctx
+495: (8)                    pw = self.pixel_width
+496: (8)                    ph = self.pixel_height
+497: (8)                    fw = self.frame_width
+498: (8)                    fh = self.frame_height
+499: (8)                    fc = self.frame_center
+500: (8)                    surface = cairo.ImageSurface.create_for_data(
+501: (12)                       pixel_array,
+502: (12)                       cairo.FORMAT_ARGB32,
+503: (12)                       pw,
+504: (12)                       ph,
+505: (8)                    )
+506: (8)                    ctx = cairo.Context(surface)
+507: (8)                    ctx.scale(pw, ph)
+508: (8)                    ctx.set_matrix(
+509: (12)                       cairo.Matrix(
+510: (16)                           (pw / fw),
+511: (16)                           0,
+512: (16)                           0,
+513: (16)                           -(ph / fh),
+514: (16)                           (pw / 2) - fc[0] * (pw / fw),
+515: (16)                           (ph / 2) + fc[1] * (ph / fh),
+516: (12)                       ),
+517: (8)                    )
+518: (8)                    self.cache_cairo_context(pixel_array, ctx)
+519: (8)                    return ctx
+520: (4)                def display_multiple_vectorized_mobjects(
+521: (8)                    self, vmobjects: list, pixel_array: np.ndarray
+522: (4)                ):
+523: (8)                    """Displays multiple VMobjects in the pixel_array
+524: (8)                    Parameters
+525: (8)                    ----------
+526: (8)                    vmobjects
+527: (12)                       list of VMobjects to display
+528: (8)                    pixel_array
+529: (12)                       The pixel array
+530: (8)                    """
+531: (8)                    if len(vmobjects) == 0:
+532: (12)                       return
+533: (8)                    batch_image_pairs = it.groupby(vmobjects, lambda vm: vm.get_background_image())
+534: (8)                    for image, batch in batch_image_pairs:
+535: (12)                       if image:
+536: (16)                           self.display_multiple_background_colored_vmobjects(batch, pixel_array)
+537: (12)                       else:
+538: (16)                           self.display_multiple_non_background_colored_vmobjects(
+539: (20)                               batch,
+540: (20)                               pixel_array,
+541: (16)                           )
+542: (4)                def display_multiple_non_background_colored_vmobjects(
+543: (8)                    self, vmobjects: list, pixel_array: np.ndarray
+544: (4)                ):
+545: (8)                    """Displays multiple VMobjects in the cairo context, as long as they don't have
+546: (8)                    background colors.
+547: (8)                    Parameters
+548: (8)                    ----------
+549: (8)                    vmobjects
+550: (12)                       list of the VMobjects
+551: (8)                    pixel_array
+552: (12)                       The Pixel array to add the VMobjects to.
+553: (8)                    """
+554: (8)                    ctx = self.get_cairo_context(pixel_array)
+555: (8)                    for vmobject in vmobjects:
+556: (12)                       self.display_vectorized(vmobject, ctx)
+557: (4)                def display_vectorized(self, vmobject: VMobject, ctx: cairo.Context):
+558: (8)                    """Displays a VMobject in the cairo context
+559: (8)                    Parameters
+560: (8)                    ----------
+561: (8)                    vmobject
+562: (12)                       The Vectorized Mobject to display
+563: (8)                    ctx
+564: (12)                       The cairo context to use.
+565: (8)                    Returns
+566: (8)                    -------
+567: (8)                    Camera
+568: (12)                       The camera object
+569: (8)                    """
+570: (8)                    self.set_cairo_context_path(ctx, vmobject)
+571: (8)                    self.apply_stroke(ctx, vmobject, background=True)
+572: (8)                    self.apply_fill(ctx, vmobject)
+573: (8)                    self.apply_stroke(ctx, vmobject)
+574: (8)                    return self
+575: (4)                def set_cairo_context_path(self, ctx: cairo.Context, vmobject: VMobject):
+576: (8)                    """Sets a path for the cairo context with the vmobject passed
+577: (8)                    Parameters
+578: (8)                    ----------
+579: (8)                    ctx
+580: (12)                       The cairo context
+581: (8)                    vmobject
+582: (12)                       The VMobject
+583: (8)                    Returns
+584: (8)                    -------
+585: (8)                    Camera
+586: (12)                       Camera object after setting cairo_context_path
+587: (8)                    """
+588: (8)                    points = self.transform_points_pre_display(vmobject, vmobject.points)
+589: (8)                    # TODO, shouldn't this be handled in transform_points_pre_display?
+590: (8)                    # points = points - self.get_frame_center()
+591: (8)                    if len(points) == 0:
+592: (12)                       return
+593: (8)                    ctx.new_path()
+594: (8)                    subpaths = vmobject.gen_subpaths_from_points_2d(points)
+595: (8)                    for subpath in subpaths:
+596: (12)                       quads = vmobject.gen_cubic_bezier_tuples_from_points(subpath)
+597: (12)                       ctx.new_sub_path()
+598: (12)                       start = subpath[0]
+599: (12)                       ctx.move_to(*start[:2])
+600: (12)                       for _p0, p1, p2, p3 in quads:
+601: (16)                           ctx.curve_to(*p1[:2], *p2[:2], *p3[:2])
+602: (12)                       if vmobject.consider_points_equals_2d(subpath[0], subpath[-1]):
+603: (16)                           ctx.close_path()
+604: (8)                    return self
+605: (4)                def set_cairo_context_color(
+606: (8)                    self, ctx: cairo.Context, rgbas: np.ndarray, vmobject: VMobject
+607: (4)                ):
+608: (8)                    """Sets the color of the cairo context
+609: (8)                    Parameters
+610: (8)                    ----------
+611: (8)                    ctx
+612: (12)                       The cairo context
+613: (8)                    rgbas
+614: (12)                       The RGBA array with which to color the context.
+615: (8)                    vmobject
+616: (12)                       The VMobject with which to set the color.
+617: (8)                    Returns
+618: (8)                    -------
+619: (8)                    Camera
+620: (12)                       The camera object
+621: (8)                    """
+622: (8)                    if len(rgbas) == 1:
+623: (12)                       # Use reversed rgb because cairo surface is
+624: (12)                       # encodes it in reverse order
+625: (12)                       ctx.set_source_rgba(*rgbas[0][2::-1], rgbas[0][3])
+626: (8)                    else:
+627: (12)                       points = vmobject.get_gradient_start_and_end_points()
+628: (12)                       points = self.transform_points_pre_display(vmobject, points)
+629: (12)                       pat = cairo.LinearGradient(*it.chain(*(point[:2] for point in points)))
+630: (12)                       step = 1.0 / (len(rgbas) - 1)
+631: (12)                       offsets = np.arange(0, 1 + step, step)
+632: (12)                       for rgba, offset in zip(rgbas, offsets):
+633: (16)                           pat.add_color_stop_rgba(offset, *rgba[2::-1], rgba[3])
+634: (12)                       ctx.set_source(pat)
+635: (8)                    return self
+636: (4)                def apply_fill(self, ctx: cairo.Context, vmobject: VMobject):
+637: (8)                    """Fills the cairo context
+638: (8)                    Parameters
+639: (8)                    ----------
+640: (8)                    ctx
+641: (12)                       The cairo context
+642: (8)                    vmobject
+643: (12)                       The VMobject
+644: (8)                    Returns
+645: (8)                    -------
+646: (8)                    Camera
+647: (12)                       The camera object.
+648: (8)                    """
+649: (8)                    self.set_cairo_context_color(ctx, self.get_fill_rgbas(vmobject), vmobject)
+650: (8)                    ctx.fill_preserve()
+651: (8)                    return self
+652: (4)                def apply_stroke(
+653: (8)                    self, ctx: cairo.Context, vmobject: VMobject, background: bool = False
+654: (4)                ):
+655: (8)                    """Applies a stroke to the VMobject in the cairo context.
+656: (8)                    Parameters
+657: (8)                    ----------
+658: (8)                    ctx
+659: (12)                       The cairo context
+660: (8)                    vmobject
+661: (12)                       The VMobject
+662: (8)                    background
+663: (12)                       Whether or not to consider the background when applying this
+664: (12)                       stroke width, by default False
+665: (8)                    Returns
+666: (8)                    -------
+667: (8)                    Camera
+668: (12)                       The camera object with the stroke applied.
+669: (8)                    """
+670: (8)                    width = vmobject.get_stroke_width(background)
+671: (8)                    if width == 0:
+672: (12)                       return self
+673: (8)                    self.set_cairo_context_color(
+674: (12)                       ctx,
+675: (12)                       self.get_stroke_rgbas(vmobject, background=background),
+676: (12)                       vmobject,
+677: (8)                    )
+678: (8)                    ctx.set_line_width(
+679: (12)                       width
+680: (12)                       * self.cairo_line_width_multiple
+681: (12)                       * (self.frame_width / self.frame_width),
+682: (12)                       # This ensures lines have constant width as you zoom in on them.
+683: (8)                    )
+684: (8)                    if vmobject.joint_type != LineJointType.AUTO:
+685: (12)                       ctx.set_line_join(LINE_JOIN_MAP[vmobject.joint_type])
+686: (8)                    if vmobject.cap_style != CapStyleType.AUTO:
+687: (12)                       ctx.set_line_cap(CAP_STYLE_MAP[vmobject.cap_style])
+688: (8)                    ctx.stroke_preserve()
+689: (8)                    return self
+690: (4)                def get_stroke_rgbas(self, vmobject: VMobject, background: bool = False):
+691: (8)                    """Gets the RGBA array for the stroke of the passed
+692: (8)                    VMobject.
+693: (8)                    Parameters
+694: (8)                    ----------
+695: (8)                    vmobject
+696: (12)                       The VMobject
+697: (8)                    background
+698: (12)                       Whether or not to consider the background when getting the stroke
+699: (12)                       RGBAs, by default False
+700: (8)                    Returns
+701: (8)                    -------
+702: (8)                    np.ndarray
+703: (12)                       The RGBA array of the stroke.
+704: (8)                    """
+705: (8)                    return vmobject.get_stroke_rgbas(background)
+706: (4)                def get_fill_rgbas(self, vmobject: VMobject):
+707: (8)                    """Returns the RGBA array of the fill of the passed VMobject
+708: (8)                    Parameters
+709: (8)                    ----------
+710: (8)                    vmobject
+711: (12)                       The VMobject
+712: (8)                    Returns
+713: (8)                    -------
+714: (8)                    np.array
+715: (12)                       The RGBA Array of the fill of the VMobject
+716: (8)                    """
+717: (8)                    return vmobject.get_fill_rgbas()
+718: (4)                def get_background_colored_vmobject_displayer(self):
+719: (8)                    """Returns the background_colored_vmobject_displayer
+720: (8)                    if it exists or makes one and returns it if not.
+721: (8)                    Returns
+722: (8)                    -------
+723: (8)                    BackGroundColoredVMobjectDisplayer
+724: (12)                       Object that displays VMobjects that have the same color
+725: (12)                       as the background.
+726: (8)                    """
+727: (8)                    # Quite wordy to type out a bunch
+728: (8)                    bcvd = "background_colored_vmobject_displayer"
+729: (8)                    if not hasattr(self, bcvd):
+730: (12)                       setattr(self, bcvd, BackgroundColoredVMobjectDisplayer(self))
+731: (8)                    return getattr(self, bcvd)
+732: (4)                def display_multiple_background_colored_vmobjects(
+733: (8)                    self, cvmobjects: list, pixel_array: np.ndarray
+734: (4)                ):
+735: (8)                    """Displays multiple vmobjects that have the same color as the background.
+736: (8)                    Parameters
+737: (8)                    ----------
+738: (8)                    cvmobjects
+739: (12)                       List of Colored VMobjects
+740: (8)                    pixel_array
+741: (12)                       The pixel array.
+742: (8)                    Returns
+743: (8)                    -------
+744: (8)                    Camera
+745: (12)                       The camera object.
+746: (8)                    """
+747: (8)                    displayer = self.get_background_colored_vmobject_displayer()
+748: (8)                    cvmobject_pixel_array = displayer.display(*cvmobjects)
+749: (8)                    self.overlay_rgba_array(pixel_array, cvmobject_pixel_array)
+750: (8)                    return self
+751: (4)                # Methods for other rendering
+752: (4)                # NOTE: Out of the following methods, only `transform_points_pre_display` and `points_to_pixel_coords` have been mentioned outside of their definitions.
+753: (4)                # As a result, the other methods do not have as detailed docstrings as would be preferred.
+754: (4)                def display_multiple_point_cloud_mobjects(
+755: (8)                    self, pmobjects: list, pixel_array: np.ndarray
+756: (4)                ):
+757: (8)                    """Displays multiple PMobjects by modifying the passed pixel array.
+758: (8)                    Parameters
+759: (8)                    ----------
+760: (8)                    pmobjects
+761: (12)                       List of PMobjects
+762: (8)                    pixel_array
+763: (12)                       The pixel array to modify.
+764: (8)                    """
+765: (8)                    for pmobject in pmobjects:
+766: (12)                       self.display_point_cloud(
+767: (16)                           pmobject,
+768: (16)                           pmobject.points,
+769: (16)                           pmobject.rgbas,
+770: (16)                           self.adjusted_thickness(pmobject.stroke_width),
+771: (16)                           pixel_array,
+772: (12)                       )
+773: (4)                def display_point_cloud(
+774: (8)                    self,
+775: (8)                    pmobject: PMobject,
+776: (8)                    points: list,
+777: (8)                    rgbas: np.ndarray,
+778: (8)                    thickness: float,
+779: (8)                    pixel_array: np.ndarray,
+780: (4)                ):
+781: (8)                    """Displays a PMobject by modifying the pixel array suitably.
+782: (8)                    TODO: Write a description for the rgbas argument.
+783: (8)                    Parameters
+784: (8)                    ----------
+785: (8)                    pmobject
+786: (12)                       Point Cloud Mobject
+787: (8)                    points
+788: (12)                       The points to display in the point cloud mobject
+789: (8)                    rgbas
+790: (8)                    thickness
+791: (12)                       The thickness of each point of the PMobject
+792: (8)                    pixel_array
+793: (12)                       The pixel array to modify.
+794: (8)                    """
+795: (8)                    if len(points) == 0:
+796: (12)                       return
+797: (8)                    pixel_coords = self.points_to_pixel_coords(pmobject, points)
+798: (8)                    pixel_coords = self.thickened_coordinates(pixel_coords, thickness)
+799: (8)                    rgba_len = pixel_array.shape[2]
+800: (8)                    rgbas = (self.rgb_max_val * rgbas).astype(self.pixel_array_dtype)
+801: (8)                    target_len = len(pixel_coords)
+802: (8)                    factor = target_len // len(rgbas)
+803: (8)                    rgbas = np.array([rgbas] * factor).reshape((target_len, rgba_len))
+804: (8)                    on_screen_indices = self.on_screen_pixels(pixel_coords)
+805: (8)                    pixel_coords = pixel_coords[on_screen_indices]
+806: (8)                    rgbas = rgbas[on_screen_indices]
+807: (8)                    ph = self.pixel_height
+808: (8)                    pw = self.pixel_width
+809: (8)                    flattener = np.array([1, pw], dtype="int")
+810: (8)                    flattener = flattener.reshape((2, 1))
+811: (8)                    indices = np.dot(pixel_coords, flattener)[:, 0]
+812: (8)                    indices = indices.astype("int")
+813: (8)                    new_pa = pixel_array.reshape((ph * pw, rgba_len))
+814: (8)                    new_pa[indices] = rgbas
+815: (8)                    pixel_array[:, :] = new_pa.reshape((ph, pw, rgba_len))
+816: (4)                def display_multiple_image_mobjects(
+817: (8)                    self, image_mobjects: list, pixel_array: np.ndarray
+818: (4)                ):
+819: (8)                    """Displays multiple image mobjects by modifying the passed pixel_array.
+820: (8)                    Parameters
+821: (8)                    ----------
+822: (8)                    image_mobjects
+823: (12)                       list of ImageMobjects
+824: (8)                    pixel_array
+825: (12)                       The pixel array to modify.
+826: (8)                    """
+827: (8)                    for image_mobject in image_mobjects:
+828: (12)                       self.display_image_mobject(image_mobject, pixel_array)
+829: (4)                def display_image_mobject(
+830: (8)                    self, image_mobject: AbstractImageMobject, pixel_array: np.ndarray
+831: (4)                ):
+832: (8)                    """Displays an ImageMobject by changing the pixel_array suitably.
+833: (8)                    Parameters
+834: (8)                    ----------
+835: (8)                    image_mobject
+836: (12)                       The imageMobject to display
+837: (8)                    pixel_array
+838: (12)                       The Pixel array to put the imagemobject in.
+839: (8)                    """
+840: (8)                    corner_coords = self.points_to_pixel_coords(image_mobject, image_mobject.points)
+841: (8)                    ul_coords, ur_coords, dl_coords, _ = corner_coords
+842: (8)                    right_vect = ur_coords - ul_coords
+843: (8)                    down_vect = dl_coords - ul_coords
+844: (8)                    center_coords = ul_coords + (right_vect + down_vect) / 2
+845: (8)                    sub_image = Image.fromarray(image_mobject.get_pixel_array(), mode="RGBA")
+846: (8)                    # Reshape
+847: (8)                    pixel_width = max(int(pdist([ul_coords, ur_coords]).item()), 1)
+848: (8)                    pixel_height = max(int(pdist([ul_coords, dl_coords]).item()), 1)
+849: (8)                    sub_image = sub_image.resize(
+850: (12)                       (pixel_width, pixel_height),
+851: (12)                       resample=image_mobject.resampling_algorithm,
+852: (8)                    )
+853: (8)                    # Rotate
+854: (8)                    angle = angle_of_vector(right_vect)
+855: (8)                    adjusted_angle = -int(360 * angle / TAU)
+856: (8)                    if adjusted_angle != 0:
+857: (12)                       sub_image = sub_image.rotate(
+858: (16)                           adjusted_angle,
+859: (16)                           resample=image_mobject.resampling_algorithm,
+860: (16)                           expand=1,
+861: (12)                       )
+862: (8)                    # TODO, there is no accounting for a shear...
+863: (8)                    # Paste into an image as large as the camera's pixel array
+864: (8)                    full_image = Image.fromarray(
+865: (12)                       np.zeros((self.pixel_height, self.pixel_width)),
+866: (12)                       mode="RGBA",
+867: (8)                    )
+868: (8)                    new_ul_coords = center_coords - np.array(sub_image.size) / 2
+869: (8)                    new_ul_coords = new_ul_coords.astype(int)
+870: (8)                    full_image.paste(
+871: (12)                       sub_image,
+872: (12)                       box=(
+873: (16)                           new_ul_coords[0],
+874: (16)                           new_ul_coords[1],
+875: (16)                           new_ul_coords[0] + sub_image.size[0],
+876: (16)                           new_ul_coords[1] + sub_image.size[1],
+877: (12)                       ),
+878: (8)                    )
+879: (8)                    # Paint on top of existing pixel array
+880: (8)                    self.overlay_PIL_image(pixel_array, full_image)
+881: (4)                def overlay_rgba_array(self, pixel_array: np.ndarray, new_array: np.ndarray):
+882: (8)                    """Overlays an RGBA array on top of the given Pixel array.
+883: (8)                    Parameters
+884: (8)                    ----------
+885: (8)                    pixel_array
+886: (12)                       The original pixel array to modify.
+887: (8)                    new_array
+888: (12)                       The new pixel array to overlay.
+889: (8)                    """
+890: (8)                    self.overlay_PIL_image(pixel_array, self.get_image(new_array))
+891: (4)                def overlay_PIL_image(self, pixel_array: np.ndarray, image: Image):
+892: (8)                    """Overlays a PIL image on the passed pixel array.
+893: (8)                    Parameters
+894: (8)                    ----------
+895: (8)                    pixel_array
+896: (12)                       The Pixel array
+897: (8)                    image
+898: (12)                       The Image to overlay.
+899: (8)                    """
+900: (8)                    pixel_array[:, :] = np.array(
+901: (12)                       Image.alpha_composite(self.get_image(pixel_array), image),
+902: (12)                       dtype="uint8",
+903: (8)                    )
+904: (4)                def adjust_out_of_range_points(self, points: np.ndarray):
+905: (8)                    """If any of the points in the passed array are out of
+906: (8)                    the viable range, they are adjusted suitably.
+907: (8)                    Parameters
+908: (8)                    ----------
+909: (8)                    points
+910: (12)                       The points to adjust
+911: (8)                    Returns
+912: (8)                    -------
+913: (8)                    np.array
+914: (12)                       The adjusted points.
+915: (8)                    """
+916: (8)                    if not np.any(points > self.max_allowable_norm):
+917: (12)                       return points
+918: (8)                    norms = np.apply_along_axis(np.linalg.norm, 1, points)
+919: (8)                    violator_indices = norms > self.max_allowable_norm
+920: (8)                    violators = points[violator_indices, :]
+921: (8)                    violator_norms = norms[violator_indices]
+922: (8)                    reshaped_norms = np.repeat(
+923: (12)                       violator_norms.reshape((len(violator_norms), 1)),
+924: (12)                       points.shape[1],
+925: (12)                       1,
+926: (8)                    )
+927: (8)                    rescaled = self.max_allowable_norm * violators / reshaped_norms
+928: (8)                    points[violator_indices] = rescaled
+929: (8)                    return points
+930: (4)                def transform_points_pre_display(
+931: (8)                    self,
+932: (8)                    mobject,
+933: (8)                    points,
+934: (4)                ):  # TODO: Write more detailed docstrings for this method.
+935: (8)                    # NOTE: There seems to be an unused argument `mobject`.
+936: (8)                    # Subclasses (like ThreeDCamera) may want to
+937: (8)                    # adjust points further before they're shown
+938: (8)                    if not np.all(np.isfinite(points)):
+939: (12)                       # TODO, print some kind of warning about
+940: (12)                       # mobject having invalid points?
+941: (12)                       points = np.zeros((1, 3))
+942: (8)                    return points
+943: (4)                def points_to_pixel_coords(
+944: (8)                    self,
+945: (8)                    mobject,
+946: (8)                    points,
+947: (4)                ):  # TODO: Write more detailed docstrings for this method.
+948: (8)                    points = self.transform_points_pre_display(mobject, points)
+949: (8)                    shifted_points = points - self.frame_center
+950: (8)                    result = np.zeros((len(points), 2))
+951: (8)                    pixel_height = self.pixel_height
+952: (8)                    pixel_width = self.pixel_width
+953: (8)                    frame_height = self.frame_height
+954: (8)                    frame_width = self.frame_width
+955: (8)                    width_mult = pixel_width / frame_width
+956: (8)                    width_add = pixel_width / 2
+957: (8)                    height_mult = pixel_height / frame_height
+958: (8)                    height_add = pixel_height / 2
+959: (8)                    # Flip on y-axis as you go
+960: (8)                    height_mult *= -1
+961: (8)                    result[:, 0] = shifted_points[:, 0] * width_mult + width_add
+962: (8)                    result[:, 1] = shifted_points[:, 1] * height_mult + height_add
+963: (8)                    return result.astype("int")
+964: (4)                def on_screen_pixels(self, pixel_coords: np.ndarray):
+965: (8)                    """Returns array of pixels that are on the screen from a given
+966: (8)                    array of pixel_coordinates
+967: (8)                    Parameters
+968: (8)                    ----------
+969: (8)                    pixel_coords
+970: (12)                       The pixel coords to check.
+971: (8)                    Returns
+972: (8)                    -------
+973: (8)                    np.array
+974: (12)                       The pixel coords on screen.
+975: (8)                    """
+976: (8)                    return reduce(
+977: (12)                       op.and_,
+978: (12)                       [
+979: (16)                           pixel_coords[:, 0] >= 0,
+980: (16)                           pixel_coords[:, 0] < self.pixel_width,
+981: (16)                           pixel_coords[:, 1] >= 0,
+982: (16)                           pixel_coords[:, 1] < self.pixel_height,
+983: (12)                       ],
+984: (8)                    )
+985: (4)                def adjusted_thickness(self, thickness: float) -> float:
+986: (8)                    """Computes the adjusted stroke width for a zoomed camera.
+987: (8)                    Parameters
+988: (8)                    ----------
+989: (8)                    thickness
+990: (12)                       The stroke width of a mobject.
+991: (8)                    Returns
+992: (8)                    -------
+993: (8)                    float
+994: (12)                       The adjusted stroke width that reflects zooming in with
+995: (12)                       the camera.
+996: (8)                    """
+997: (8)                    # TODO: This seems...unsystematic
+998: (8)                    big_sum = op.add(config["pixel_height"], config["pixel_width"])
+999: (8)                    this_sum = op.add(self.pixel_height, self.pixel_width)
+1000: (8)                   factor = big_sum / this_sum
+1001: (8)                   return 1 + (thickness - 1) * factor
+1002: (4)               def get_thickening_nudges(self, thickness: float):
+1003: (8)                   """Determine a list of vectors used to nudge
+1004: (8)                   two-dimensional pixel coordinates.
+1005: (8)                   Parameters
+1006: (8)                   ----------
+1007: (8)                   thickness
+1008: (8)                   Returns
+1009: (8)                   -------
+1010: (8)                   np.array
+1011: (8)                   """
+1012: (8)                   thickness = int(thickness)
+1013: (8)                   _range = list(range(-thickness // 2 + 1, thickness // 2 + 1))
+1014: (8)                   return np.array(list(it.product(_range, _range)))
+1015: (4)               def thickened_coordinates(self, pixel_coords: np.ndarray, thickness: float):
+1016: (8)                   """Returns thickened coordinates for a passed array of pixel coords and
+1017: (8)                   a thickness to thicken by.
+1018: (8)                   Parameters
+1019: (8)                   ----------
+1020: (8)                   pixel_coords
+1021: (12)                      Pixel coordinates
+1022: (8)                   thickness
+1023: (12)                      Thickness
+1024: (8)                   Returns
+1025: (8)                   -------
+1026: (8)                   np.array
+1027: (12)                      Array of thickened pixel coords.
+1028: (8)                   """
+1029: (8)                   nudges = self.get_thickening_nudges(thickness)
+1030: (8)                   pixel_coords = np.array([pixel_coords + nudge for nudge in nudges])
+1031: (8)                   size = pixel_coords.size
+1032: (8)                   return pixel_coords.reshape((size // 2, 2))
+1033: (4)               # TODO, reimplement using cairo matrix
+1034: (4)               def get_coords_of_all_pixels(self):
+1035: (8)                   """Returns the cartesian coordinates of each pixel.
+1036: (8)                   Returns
+1037: (8)                   -------
+1038: (8)                   np.ndarray
+1039: (12)                      The array of cartesian coordinates.
+1040: (8)                   """
+1041: (8)                   # These are in x, y order, to help me keep things straight
+1042: (8)                   full_space_dims = np.array([self.frame_width, self.frame_height])
+1043: (8)                   full_pixel_dims = np.array([self.pixel_width, self.pixel_height])
+1044: (8)                   # These are addressed in the same y, x order as in pixel_array, but the values in them
+1045: (8)                   # are listed in x, y order
+1046: (8)                   uncentered_pixel_coords = np.indices([self.pixel_height, self.pixel_width])[
+1047: (12)                      ::-1
+1048: (8)                   ].transpose(1, 2, 0)
+1049: (8)                   uncentered_space_coords = (
+1050: (12)                      uncentered_pixel_coords * full_space_dims
+1051: (8)                   ) / full_pixel_dims
+1052: (8)                   # Could structure above line's computation slightly differently, but figured (without much
+1053: (8)                   # thought) multiplying by frame_shape first, THEN dividing by pixel_shape, is probably
+1054: (8)                   # better than the other order, for avoiding underflow quantization in the division (whereas
+1055: (8)                   # overflow is unlikely to be a problem)
+1056: (8)                   centered_space_coords = uncentered_space_coords - (full_space_dims / 2)
+1057: (8)                   # Have to also flip the y coordinates to account for pixel array being listed in
+1058: (8)                   # top-to-bottom order, opposite of screen coordinate convention
+1059: (8)                   centered_space_coords = centered_space_coords * (1, -1)
+1060: (8)                   return centered_space_coords
+1061: (0)           # NOTE: The methods of the following class have not been mentioned outside of their definitions.
+1062: (0)           # Their DocStrings are not as detailed as preferred.
+1063: (0)           class BackgroundColoredVMobjectDisplayer:
+1064: (4)               """Auxiliary class that handles displaying vectorized mobjects with
+1065: (4)               a set background image.
+1066: (4)               Parameters
+1067: (4)               ----------
+1068: (4)               camera
+1069: (8)                   Camera object to use.
+1070: (4)               """
+1071: (4)               def __init__(self, camera: Camera):
+1072: (8)                   self.camera = camera
+1073: (8)                   self.file_name_to_pixel_array_map = {}
+1074: (8)                   self.pixel_array = np.array(camera.pixel_array)
+1075: (8)                   self.reset_pixel_array()
+1076: (4)               def reset_pixel_array(self):
+1077: (8)                   self.pixel_array[:, :] = 0
+1078: (4)               def resize_background_array(
+1079: (8)                   self,
+1080: (8)                   background_array: np.ndarray,
+1081: (8)                   new_width: float,
+1082: (8)                   new_height: float,
+1083: (8)                   mode: str = "RGBA",
+1084: (4)               ):
+1085: (8)                   """Resizes the pixel array representing the background.
+1086: (8)                   Parameters
+1087: (8)                   ----------
+1088: (8)                   background_array
+1089: (12)                      The pixel
+1090: (8)                   new_width
+1091: (12)                      The new width of the background
+1092: (8)                   new_height
+1093: (12)                      The new height of the background
+1094: (8)                   mode
+1095: (12)                      The PIL image mode, by default "RGBA"
+1096: (8)                   Returns
+1097: (8)                   -------
+1098: (8)                   np.array
+1099: (12)                      The numpy pixel array of the resized background.
+1100: (8)                   """
+1101: (8)                   image = Image.fromarray(background_array)
+1102: (8)                   image = image.convert(mode)
+1103: (8)                   resized_image = image.resize((new_width, new_height))
+1104: (8)                   return np.array(resized_image)
+1105: (4)               def resize_background_array_to_match(
+1106: (8)                   self, background_array: np.ndarray, pixel_array: np.ndarray
+1107: (4)               ):
+1108: (8)                   """Resizes the background array to match the passed pixel array.
+1109: (8)                   Parameters
+1110: (8)                   ----------
+1111: (8)                   background_array
+1112: (12)                      The prospective pixel array.
+1113: (8)                   pixel_array
+1114: (12)                      The pixel array whose width and height should be matched.
+1115: (8)                   Returns
+1116: (8)                   -------
+1117: (8)                   np.array
+1118: (12)                      The resized background array.
+1119: (8)                   """
+1120: (8)                   height, width = pixel_array.shape[:2]
+1121: (8)                   mode = "RGBA" if pixel_array.shape[2] == 4 else "RGB"
+1122: (8)                   return self.resize_background_array(background_array, width, height, mode)
+1123: (4)               def get_background_array(self, image: Image.Image | pathlib.Path | str):
+1124: (8)                   """Gets the background array that has the passed file_name.
+1125: (8)                   Parameters
+1126: (8)                   ----------
+1127: (8)                   image
+1128: (12)                      The background image or its file name.
+1129: (8)                   Returns
+1130: (8)                   -------
+1131: (8)                   np.ndarray
+1132: (12)                      The pixel array of the image.
+1133: (8)                   """
+1134: (8)                   image_key = str(image)
+1135: (8)                   if image_key in self.file_name_to_pixel_array_map:
+1136: (12)                      return self.file_name_to_pixel_array_map[image_key]
+1137: (8)                   if isinstance(image, str):
+1138: (12)                      full_path = get_full_raster_image_path(image)
+1139: (12)                      image = Image.open(full_path)
+1140: (8)                   back_array = np.array(image)
+1141: (8)                   pixel_array = self.pixel_array
+1142: (8)                   if not np.all(pixel_array.shape == back_array.shape):
+1143: (12)                      back_array = self.resize_background_array_to_match(back_array, pixel_array)
+1144: (8)                   self.file_name_to_pixel_array_map[image_key] = back_array
+1145: (8)                   return back_array
+1146: (4)               def display(self, *cvmobjects: VMobject):
+1147: (8)                   """Displays the colored VMobjects.
+1148: (8)                   Parameters
+1149: (8)                   ----------
+1150: (8)                   *cvmobjects
+1151: (12)                      The VMobjects
+1152: (8)                   Returns
+1153: (8)                   -------
+1154: (8)                   np.array
+1155: (12)                      The pixel array with the `cvmobjects` displayed.
+1156: (8)                   """
+1157: (8)                   batch_image_pairs = it.groupby(cvmobjects, lambda cv: cv.get_background_image())
+1158: (8)                   curr_array = None
+1159: (8)                   for image, batch in batch_image_pairs:
+1160: (12)                      background_array = self.get_background_array(image)
+1161: (12)                      pixel_array = self.pixel_array
+1162: (12)                      self.camera.display_multiple_non_background_colored_vmobjects(
+1163: (16)                          batch,
+1164: (16)                          pixel_array,
+1165: (12)                      )
+1166: (12)                      new_array = np.array(
+1167: (16)                          (background_array * pixel_array.astype("float") / 255),
+1168: (16)                          dtype=self.camera.pixel_array_dtype,
+1169: (12)                      )
+1170: (12)                      if curr_array is None:
+1171: (16)                          curr_array = new_array
+1172: (12)                      else:
+1173: (16)                          curr_array = np.maximum(curr_array, new_array)
+1174: (12)                      self.reset_pixel_array()
+1175: (8)                   return curr_array
+
+----------------------------------------
+
+File 2 - . \__init__.py:
+
+1: (0)              
+
+----------------------------------------
+
+File 3 - . \multi_camera.py:
+
+1: (0)              """A camera supporting multiple perspectives."""
+2: (0)              from __future__ import annotations
+3: (0)              __all__ = ["MultiCamera"]
+4: (0)              from manim.mobject.types.image_mobject import ImageMobject
+5: (0)              from ..camera.moving_camera import MovingCamera
+6: (0)              from ..utils.iterables import list_difference_update
+7: (0)              class MultiCamera(MovingCamera):
+8: (4)                  """Camera Object that allows for multiple perspectives."""
+9: (4)                  def __init__(
+10: (8)                     self,
+11: (8)                     image_mobjects_from_cameras: ImageMobject | None = None,
+12: (8)                     allow_cameras_to_capture_their_own_display=False,
+13: (8)                     **kwargs,
+14: (4)                 ):
+15: (8)                     """Initialises the MultiCamera
+16: (8)                     Parameters
+17: (8)                     ----------
+18: (8)                     image_mobjects_from_cameras
+19: (8)                     kwargs
+20: (12)                        Any valid keyword arguments of MovingCamera.
+21: (8)                     """
+22: (8)                     self.image_mobjects_from_cameras = []
+23: (8)                     if image_mobjects_from_cameras is not None:
+24: (12)                        for imfc in image_mobjects_from_cameras:
+25: (16)                            self.add_image_mobject_from_camera(imfc)
+26: (8)                     self.allow_cameras_to_capture_their_own_display = (
+27: (12)                        allow_cameras_to_capture_their_own_display
+28: (8)                     )
+29: (8)                     super().__init__(**kwargs)
+30: (4)                 def add_image_mobject_from_camera(self, image_mobject_from_camera: ImageMobject):
+31: (8)                     """Adds an ImageMobject that's been obtained from the camera
+32: (8)                     into the list ``self.image_mobject_from_cameras``
+33: (8)                     Parameters
+34: (8)                     ----------
+35: (8)                     image_mobject_from_camera
+36: (12)                        The ImageMobject to add to self.image_mobject_from_cameras
+37: (8)                     """
+38: (8)                     # A silly method to have right now, but maybe there are things
+39: (8)                     # we want to guarantee about any imfc's added later.
+40: (8)                     imfc = image_mobject_from_camera
+41: (8)                     assert isinstance(imfc.camera, MovingCamera)
+42: (8)                     self.image_mobjects_from_cameras.append(imfc)
+43: (4)                 def update_sub_cameras(self):
+44: (8)                     """Reshape sub_camera pixel_arrays"""
+45: (8)                     for imfc in self.image_mobjects_from_cameras:
+46: (12)                        pixel_height, pixel_width = self.pixel_array.shape[:2]
+47: (12)                        imfc.camera.frame_shape = (
+48: (16)                            imfc.camera.frame.height,
+49: (16)                            imfc.camera.frame.width,
+50: (12)                        )
+51: (12)                        imfc.camera.reset_pixel_shape(
+52: (16)                            int(pixel_height * imfc.height / self.frame_height),
+53: (16)                            int(pixel_width * imfc.width / self.frame_width),
+54: (12)                        )
+55: (4)                 def reset(self):
+56: (8)                     """Resets the MultiCamera.
+57: (8)                     Returns
+58: (8)                     -------
+59: (8)                     MultiCamera
+60: (12)                        The reset MultiCamera
+61: (8)                     """
+62: (8)                     for imfc in self.image_mobjects_from_cameras:
+63: (12)                        imfc.camera.reset()
+64: (8)                     super().reset()
+65: (8)                     return self
+66: (4)                 def capture_mobjects(self, mobjects, **kwargs):
+67: (8)                     self.update_sub_cameras()
+68: (8)                     for imfc in self.image_mobjects_from_cameras:
+69: (12)                        to_add = list(mobjects)
+70: (12)                        if not self.allow_cameras_to_capture_their_own_display:
+71: (16)                            to_add = list_difference_update(to_add, imfc.get_family())
+72: (12)                        imfc.camera.capture_mobjects(to_add, **kwargs)
+73: (8)                     super().capture_mobjects(mobjects, **kwargs)
+74: (4)                 def get_mobjects_indicating_movement(self):
+75: (8)                     """Returns all mobjects whose movement implies that the camera
+76: (8)                     should think of all other mobjects on the screen as moving
+77: (8)                     Returns
+78: (8)                     -------
+79: (8)                     list
+80: (8)                     """
+81: (8)                     return [self.frame] + [
+82: (12)                        imfc.camera.frame for imfc in self.image_mobjects_from_cameras
+83: (8)                     ]
+
+----------------------------------------
+
+File 4 - . \moving_camera.py:
+
+1: (0)              """A camera able to move through a scene.
+2: (0)              .. SEEALSO::
+3: (4)                  :mod:`.moving_camera_scene`
+4: (0)              """
+5: (0)              from __future__ import annotations
+6: (0)              __all__ = ["MovingCamera"]
+7: (0)              import numpy as np
+8: (0)              from .. import config
+9: (0)              from ..camera.camera import Camera
+10: (0)             from ..constants import DOWN, LEFT, RIGHT, UP
+11: (0)             from ..mobject.frame import ScreenRectangle
+12: (0)             from ..mobject.mobject import Mobject
+13: (0)             from ..utils.color import WHITE
+14: (0)             class MovingCamera(Camera):
+15: (4)                 """
+16: (4)                 Stays in line with the height, width and position of it's 'frame', which is a Rectangle
+17: (4)                 .. SEEALSO::
+18: (8)                     :class:`.MovingCameraScene`
+19: (4)                 """
+20: (4)                 def __init__(
+21: (8)                     self,
+22: (8)                     frame=None,
+23: (8)                     fixed_dimension=0,  # width
+24: (8)                     default_frame_stroke_color=WHITE,
+25: (8)                     default_frame_stroke_width=0,
+26: (8)                     **kwargs,
+27: (4)                 ):
+28: (8)                     """
+29: (8)                     Frame is a Mobject, (should almost certainly be a rectangle)
+30: (8)                     determining which region of space the camera displays
+31: (8)                     """
+32: (8)                     self.fixed_dimension = fixed_dimension
+33: (8)                     self.default_frame_stroke_color = default_frame_stroke_color
+34: (8)                     self.default_frame_stroke_width = default_frame_stroke_width
+35: (8)                     if frame is None:
+36: (12)                        frame = ScreenRectangle(height=config["frame_height"])
+37: (12)                        frame.set_stroke(
+38: (16)                            self.default_frame_stroke_color,
+39: (16)                            self.default_frame_stroke_width,
+40: (12)                        )
+41: (8)                     self.frame = frame
+42: (8)                     super().__init__(**kwargs)
+43: (4)                 # TODO, make these work for a rotated frame
+44: (4)                 @property
+45: (4)                 def frame_height(self):
+46: (8)                     """Returns the height of the frame.
+47: (8)                     Returns
+48: (8)                     -------
+49: (8)                     float
+50: (12)                        The height of the frame.
+51: (8)                     """
+52: (8)                     return self.frame.height
+53: (4)                 @property
+54: (4)                 def frame_width(self):
+55: (8)                     """Returns the width of the frame
+56: (8)                     Returns
+57: (8)                     -------
+58: (8)                     float
+59: (12)                        The width of the frame.
+60: (8)                     """
+61: (8)                     return self.frame.width
+62: (4)                 @property
+63: (4)                 def frame_center(self):
+64: (8)                     """Returns the centerpoint of the frame in cartesian coordinates.
+65: (8)                     Returns
+66: (8)                     -------
+67: (8)                     np.array
+68: (12)                        The cartesian coordinates of the center of the frame.
+69: (8)                     """
+70: (8)                     return self.frame.get_center()
+71: (4)                 @frame_height.setter
+72: (4)                 def frame_height(self, frame_height: float):
+73: (8)                     """Sets the height of the frame in MUnits.
+74: (8)                     Parameters
+75: (8)                     ----------
+76: (8)                     frame_height
+77: (12)                        The new frame_height.
+78: (8)                     """
+79: (8)                     self.frame.stretch_to_fit_height(frame_height)
+80: (4)                 @frame_width.setter
+81: (4)                 def frame_width(self, frame_width: float):
+82: (8)                     """Sets the width of the frame in MUnits.
+83: (8)                     Parameters
+84: (8)                     ----------
+85: (8)                     frame_width
+86: (12)                        The new frame_width.
+87: (8)                     """
+88: (8)                     self.frame.stretch_to_fit_width(frame_width)
+89: (4)                 @frame_center.setter
+90: (4)                 def frame_center(self, frame_center: np.ndarray | list | tuple | Mobject):
+91: (8)                     """Sets the centerpoint of the frame.
+92: (8)                     Parameters
+93: (8)                     ----------
+94: (8)                     frame_center
+95: (12)                        The point to which the frame must be moved.
+96: (12)                        If is of type mobject, the frame will be moved to
+97: (12)                        the center of that mobject.
+98: (8)                     """
+99: (8)                     self.frame.move_to(frame_center)
+100: (4)                def capture_mobjects(self, mobjects, **kwargs):
+101: (8)                    # self.reset_frame_center()
+102: (8)                    # self.realign_frame_shape()
+103: (8)                    super().capture_mobjects(mobjects, **kwargs)
+104: (4)                # Since the frame can be moving around, the cairo
+105: (4)                # context used for updating should be regenerated
+106: (4)                # at each frame.  So no caching.
+107: (4)                def get_cached_cairo_context(self, pixel_array):
+108: (8)                    """
+109: (8)                    Since the frame can be moving around, the cairo
+110: (8)                    context used for updating should be regenerated
+111: (8)                    at each frame.  So no caching.
+112: (8)                    """
+113: (8)                    return None
+114: (4)                def cache_cairo_context(self, pixel_array, ctx):
+115: (8)                    """
+116: (8)                    Since the frame can be moving around, the cairo
+117: (8)                    context used for updating should be regenerated
+118: (8)                    at each frame.  So no caching.
+119: (8)                    """
+120: (8)                    pass
+121: (4)                # def reset_frame_center(self):
+122: (4)                #     self.frame_center = self.frame.get_center()
+123: (4)                # def realign_frame_shape(self):
+124: (4)                #     height, width = self.frame_shape
+125: (4)                #     if self.fixed_dimension == 0:
+126: (4)                #         self.frame_shape = (height, self.frame.width
+127: (4)                #     else:
+128: (4)                #         self.frame_shape = (self.frame.height, width)
+129: (4)                #     self.resize_frame_shape(fixed_dimension=self.fixed_dimension)
+130: (4)                def get_mobjects_indicating_movement(self):
+131: (8)                    """
+132: (8)                    Returns all mobjects whose movement implies that the camera
+133: (8)                    should think of all other mobjects on the screen as moving
+134: (8)                    Returns
+135: (8)                    -------
+136: (8)                    list
+137: (8)                    """
+138: (8)                    return [self.frame]
+139: (4)                def auto_zoom(
+140: (8)                    self,
+141: (8)                    mobjects: list[Mobject],
+142: (8)                    margin: float = 0,
+143: (8)                    only_mobjects_in_frame: bool = False,
+144: (8)                    animate: bool = True,
+145: (4)                ):
+146: (8)                    """Zooms on to a given array of mobjects (or a singular mobject)
+147: (8)                    and automatically resizes to frame all the mobjects.
+148: (8)                    .. NOTE::
+149: (12)                       This method only works when 2D-objects in the XY-plane are considered, it
+150: (12)                       will not work correctly when the camera has been rotated.
+151: (8)                    Parameters
+152: (8)                    ----------
+153: (8)                    mobjects
+154: (12)                       The mobject or array of mobjects that the camera will focus on.
+155: (8)                    margin
+156: (12)                       The width of the margin that is added to the frame (optional, 0 by default).
+157: (8)                    only_mobjects_in_frame
+158: (12)                       If set to ``True``, only allows focusing on mobjects that are already in frame.
+159: (8)                    animate
+160: (12)                       If set to ``False``, applies the changes instead of returning the corresponding animation
+161: (8)                    Returns
+162: (8)                    -------
+163: (8)                    Union[_AnimationBuilder, ScreenRectangle]
+164: (12)                       _AnimationBuilder that zooms the camera view to a given list of mobjects
+165: (12)                       or ScreenRectangle with position and size updated to zoomed position.
+166: (8)                    """
+167: (8)                    scene_critical_x_left = None
+168: (8)                    scene_critical_x_right = None
+169: (8)                    scene_critical_y_up = None
+170: (8)                    scene_critical_y_down = None
+171: (8)                    for m in mobjects:
+172: (12)                       if (m == self.frame) or (
+173: (16)                           only_mobjects_in_frame and not self.is_in_frame(m)
+174: (12)                       ):
+175: (16)                           # detected camera frame, should not be used to calculate final position of camera
+176: (16)                           continue
+177: (12)                       # initialize scene critical points with first mobjects critical points
+178: (12)                       if scene_critical_x_left is None:
+179: (16)                           scene_critical_x_left = m.get_critical_point(LEFT)[0]
+180: (16)                           scene_critical_x_right = m.get_critical_point(RIGHT)[0]
+181: (16)                           scene_critical_y_up = m.get_critical_point(UP)[1]
+182: (16)                           scene_critical_y_down = m.get_critical_point(DOWN)[1]
+183: (12)                       else:
+184: (16)                           if m.get_critical_point(LEFT)[0] < scene_critical_x_left:
+185: (20)                               scene_critical_x_left = m.get_critical_point(LEFT)[0]
+186: (16)                           if m.get_critical_point(RIGHT)[0] > scene_critical_x_right:
+187: (20)                               scene_critical_x_right = m.get_critical_point(RIGHT)[0]
+188: (16)                           if m.get_critical_point(UP)[1] > scene_critical_y_up:
+189: (20)                               scene_critical_y_up = m.get_critical_point(UP)[1]
+190: (16)                           if m.get_critical_point(DOWN)[1] < scene_critical_y_down:
+191: (20)                               scene_critical_y_down = m.get_critical_point(DOWN)[1]
+192: (8)                    # calculate center x and y
+193: (8)                    x = (scene_critical_x_left + scene_critical_x_right) / 2
+194: (8)                    y = (scene_critical_y_up + scene_critical_y_down) / 2
+195: (8)                    # calculate proposed width and height of zoomed scene
+196: (8)                    new_width = abs(scene_critical_x_left - scene_critical_x_right)
+197: (8)                    new_height = abs(scene_critical_y_up - scene_critical_y_down)
+198: (8)                    m_target = self.frame.animate if animate else self.frame
+199: (8)                    # zoom to fit all mobjects along the side that has the largest size
+200: (8)                    if new_width / self.frame.width > new_height / self.frame.height:
+201: (12)                       return m_target.set_x(x).set_y(y).set(width=new_width + margin)
+202: (8)                    else:
+203: (12)                       return m_target.set_x(x).set_y(y).set(height=new_height + margin)
+
+----------------------------------------
+
+File 5 - . \mapping_camera.py:
+
+1: (0)              """A camera that allows mapping between objects."""
+2: (0)              from __future__ import annotations
+3: (0)              __all__ = ["MappingCamera", "OldMultiCamera", "SplitScreenCamera"]
+4: (0)              import math
+5: (0)              import numpy as np
+6: (0)              from ..camera.camera import Camera
+7: (0)              from ..mobject.types.vectorized_mobject import VMobject
+8: (0)              from ..utils.config_ops import DictAsObject
+9: (0)              # TODO: Add an attribute to mobjects under which they can specify that they should just
+10: (0)             # map their centers but remain otherwise undistorted (useful for labels, etc.)
+11: (0)             class MappingCamera(Camera):
+12: (4)                 """Camera object that allows mapping
+13: (4)                 between objects.
+14: (4)                 """
+15: (4)                 def __init__(
+16: (8)                     self,
+17: (8)                     mapping_func=lambda p: p,
+18: (8)                     min_num_curves=50,
+19: (8)                     allow_object_intrusion=False,
+20: (8)                     **kwargs,
+21: (4)                 ):
+22: (8)                     self.mapping_func = mapping_func
+23: (8)                     self.min_num_curves = min_num_curves
+24: (8)                     self.allow_object_intrusion = allow_object_intrusion
+25: (8)                     super().__init__(**kwargs)
+26: (4)                 def points_to_pixel_coords(self, mobject, points):
+27: (8)                     return super().points_to_pixel_coords(
+28: (12)                        mobject,
+29: (12)                        np.apply_along_axis(self.mapping_func, 1, points),
+30: (8)                     )
+31: (4)                 def capture_mobjects(self, mobjects, **kwargs):
+32: (8)                     mobjects = self.get_mobjects_to_display(mobjects, **kwargs)
+33: (8)                     if self.allow_object_intrusion:
+34: (12)                        mobject_copies = mobjects
+35: (8)                     else:
+36: (12)                        mobject_copies = [mobject.copy() for mobject in mobjects]
+37: (8)                     for mobject in mobject_copies:
+38: (12)                        if (
+39: (16)                            isinstance(mobject, VMobject)
+40: (16)                            and 0 < mobject.get_num_curves() < self.min_num_curves
+41: (12)                        ):
+42: (16)                            mobject.insert_n_curves(self.min_num_curves)
+43: (8)                     super().capture_mobjects(
+44: (12)                        mobject_copies,
+45: (12)                        include_submobjects=False,
+46: (12)                        excluded_mobjects=None,
+47: (8)                     )
+48: (0)             # Note: This allows layering of multiple cameras onto the same portion of the pixel array,
+49: (0)             # the later cameras overwriting the former
+50: (0)             #
+51: (0)             # TODO: Add optional separator borders between cameras (or perhaps peel this off into a
+52: (0)             # CameraPlusOverlay class)
+53: (0)             # TODO, the classes below should likely be deleted
+54: (0)             class OldMultiCamera(Camera):
+55: (4)                 def __init__(self, *cameras_with_start_positions, **kwargs):
+56: (8)                     self.shifted_cameras = [
+57: (12)                        DictAsObject(
+58: (16)                            {
+59: (20)                                "camera": camera_with_start_positions[0],
+60: (20)                                "start_x": camera_with_start_positions[1][1],
+61: (20)                                "start_y": camera_with_start_positions[1][0],
+62: (20)                                "end_x": camera_with_start_positions[1][1]
+63: (20)                                + camera_with_start_positions[0].pixel_width,
+64: (20)                                "end_y": camera_with_start_positions[1][0]
+65: (20)                                + camera_with_start_positions[0].pixel_height,
+66: (16)                            },
+67: (12)                        )
+68: (12)                        for camera_with_start_positions in cameras_with_start_positions
+69: (8)                     ]
+70: (8)                     super().__init__(**kwargs)
+71: (4)                 def capture_mobjects(self, mobjects, **kwargs):
+72: (8)                     for shifted_camera in self.shifted_cameras:
+73: (12)                        shifted_camera.camera.capture_mobjects(mobjects, **kwargs)
+74: (12)                        self.pixel_array[
+75: (16)                            shifted_camera.start_y : shifted_camera.end_y,
+76: (16)                            shifted_camera.start_x : shifted_camera.end_x,
+77: (12)                        ] = shifted_camera.camera.pixel_array
+78: (4)                 def set_background(self, pixel_array, **kwargs):
+79: (8)                     for shifted_camera in self.shifted_cameras:
+80: (12)                        shifted_camera.camera.set_background(
+81: (16)                            pixel_array[
+82: (20)                                shifted_camera.start_y : shifted_camera.end_y,
+83: (20)                                shifted_camera.start_x : shifted_camera.end_x,
+84: (16)                            ],
+85: (16)                            **kwargs,
+86: (12)                        )
+87: (4)                 def set_pixel_array(self, pixel_array, **kwargs):
+88: (8)                     super().set_pixel_array(pixel_array, **kwargs)
+89: (8)                     for shifted_camera in self.shifted_cameras:
+90: (12)                        shifted_camera.camera.set_pixel_array(
+91: (16)                            pixel_array[
+92: (20)                                shifted_camera.start_y : shifted_camera.end_y,
+93: (20)                                shifted_camera.start_x : shifted_camera.end_x,
+94: (16)                            ],
+95: (16)                            **kwargs,
+96: (12)                        )
+97: (4)                 def init_background(self):
+98: (8)                     super().init_background()
+99: (8)                     for shifted_camera in self.shifted_cameras:
+100: (12)                       shifted_camera.camera.init_background()
+101: (0)            # A OldMultiCamera which, when called with two full-size cameras, initializes itself
+102: (0)            # as a split screen, also taking care to resize each individual camera within it
+103: (0)            class SplitScreenCamera(OldMultiCamera):
+104: (4)                def __init__(self, left_camera, right_camera, **kwargs):
+105: (8)                    Camera.__init__(self, **kwargs)  # to set attributes such as pixel_width
+106: (8)                    self.left_camera = left_camera
+107: (8)                    self.right_camera = right_camera
+108: (8)                    half_width = math.ceil(self.pixel_width / 2)
+109: (8)                    for camera in [self.left_camera, self.right_camera]:
+110: (12)                       camera.reset_pixel_shape(camera.pixel_height, half_width)
+111: (8)                    super().__init__(
+112: (12)                       (left_camera, (0, 0)),
+113: (12)                       (right_camera, (0, half_width)),
+114: (8)                    )
+
+----------------------------------------
+
+File 6 - . \three_d_camera.py:
+
+1: (0)              """A camera that can be positioned and oriented in three-dimensional space."""
+2: (0)              from __future__ import annotations
+3: (0)              __all__ = ["ThreeDCamera"]
+4: (0)              from typing import Callable
+5: (0)              import numpy as np
+6: (0)              from manim.mobject.mobject import Mobject
+7: (0)              from manim.mobject.three_d.three_d_utils import (
+8: (4)                  get_3d_vmob_end_corner,
+9: (4)                  get_3d_vmob_end_corner_unit_normal,
+10: (4)                 get_3d_vmob_start_corner,
+11: (4)                 get_3d_vmob_start_corner_unit_normal,
+12: (0)             )
+13: (0)             from manim.mobject.value_tracker import ValueTracker
+14: (0)             from .. import config
+15: (0)             from ..camera.camera import Camera
+16: (0)             from ..constants import *
+17: (0)             from ..mobject.types.point_cloud_mobject import Point
+18: (0)             from ..utils.color import get_shaded_rgb
+19: (0)             from ..utils.family import extract_mobject_family_members
+20: (0)             from ..utils.space_ops import rotation_about_z, rotation_matrix
+21: (0)             class ThreeDCamera(Camera):
+22: (4)                 def __init__(
+23: (8)                     self,
+24: (8)                     focal_distance=20.0,
+25: (8)                     shading_factor=0.2,
+26: (8)                     default_distance=5.0,
+27: (8)                     light_source_start_point=9 * DOWN + 7 * LEFT + 10 * OUT,
+28: (8)                     should_apply_shading=True,
+29: (8)                     exponential_projection=False,
+30: (8)                     phi=0,
+31: (8)                     theta=-90 * DEGREES,
+32: (8)                     gamma=0,
+33: (8)                     zoom=1,
+34: (8)                     **kwargs,
+35: (4)                 ):
+36: (8)                     """Initializes the ThreeDCamera
+37: (8)                     Parameters
+38: (8)                     ----------
+39: (8)                     *kwargs
+40: (12)                        Any keyword argument of Camera.
+41: (8)                     """
+42: (8)                     self._frame_center = Point(kwargs.get("frame_center", ORIGIN), stroke_width=0)
+43: (8)                     super().__init__(**kwargs)
+44: (8)                     self.focal_distance = focal_distance
+45: (8)                     self.phi = phi
+46: (8)                     self.theta = theta
+47: (8)                     self.gamma = gamma
+48: (8)                     self.zoom = zoom
+49: (8)                     self.shading_factor = shading_factor
+50: (8)                     self.default_distance = default_distance
+51: (8)                     self.light_source_start_point = light_source_start_point
+52: (8)                     self.light_source = Point(self.light_source_start_point)
+53: (8)                     self.should_apply_shading = should_apply_shading
+54: (8)                     self.exponential_projection = exponential_projection
+55: (8)                     self.max_allowable_norm = 3 * config["frame_width"]
+56: (8)                     self.phi_tracker = ValueTracker(self.phi)
+57: (8)                     self.theta_tracker = ValueTracker(self.theta)
+58: (8)                     self.focal_distance_tracker = ValueTracker(self.focal_distance)
+59: (8)                     self.gamma_tracker = ValueTracker(self.gamma)
+60: (8)                     self.zoom_tracker = ValueTracker(self.zoom)
+61: (8)                     self.fixed_orientation_mobjects = {}
+62: (8)                     self.fixed_in_frame_mobjects = set()
+63: (8)                     self.reset_rotation_matrix()
+64: (4)                 @property
+65: (4)                 def frame_center(self):
+66: (8)                     return self._frame_center.points[0]
+67: (4)                 @frame_center.setter
+68: (4)                 def frame_center(self, point):
+69: (8)                     self._frame_center.move_to(point)
+70: (4)                 def capture_mobjects(self, mobjects, **kwargs):
+71: (8)                     self.reset_rotation_matrix()
+72: (8)                     super().capture_mobjects(mobjects, **kwargs)
+73: (4)                 def get_value_trackers(self):
+74: (8)                     """A list of :class:`ValueTrackers <.ValueTracker>` of phi, theta, focal_distance,
+75: (8)                     gamma and zoom.
+76: (8)                     Returns
+77: (8)                     -------
+78: (8)                     list
+79: (12)                        list of ValueTracker objects
+80: (8)                     """
+81: (8)                     return [
+82: (12)                        self.phi_tracker,
+83: (12)                        self.theta_tracker,
+84: (12)                        self.focal_distance_tracker,
+85: (12)                        self.gamma_tracker,
+86: (12)                        self.zoom_tracker,
+87: (8)                     ]
+88: (4)                 def modified_rgbas(self, vmobject, rgbas):
+89: (8)                     if not self.should_apply_shading:
+90: (12)                        return rgbas
+91: (8)                     if vmobject.shade_in_3d and (vmobject.get_num_points() > 0):
+92: (12)                        light_source_point = self.light_source.points[0]
+93: (12)                        if len(rgbas) < 2:
+94: (16)                            shaded_rgbas = rgbas.repeat(2, axis=0)
+95: (12)                        else:
+96: (16)                            shaded_rgbas = np.array(rgbas[:2])
+97: (12)                        shaded_rgbas[0, :3] = get_shaded_rgb(
+98: (16)                            shaded_rgbas[0, :3],
+99: (16)                            get_3d_vmob_start_corner(vmobject),
+100: (16)                           get_3d_vmob_start_corner_unit_normal(vmobject),
+101: (16)                           light_source_point,
+102: (12)                       )
+103: (12)                       shaded_rgbas[1, :3] = get_shaded_rgb(
+104: (16)                           shaded_rgbas[1, :3],
+105: (16)                           get_3d_vmob_end_corner(vmobject),
+106: (16)                           get_3d_vmob_end_corner_unit_normal(vmobject),
+107: (16)                           light_source_point,
+108: (12)                       )
+109: (12)                       return shaded_rgbas
+110: (8)                    return rgbas
+111: (4)                def get_stroke_rgbas(
+112: (8)                    self,
+113: (8)                    vmobject,
+114: (8)                    background=False,
+115: (4)                ):  # NOTE : DocStrings From parent
+116: (8)                    return self.modified_rgbas(vmobject, vmobject.get_stroke_rgbas(background))
+117: (4)                def get_fill_rgbas(self, vmobject):  # NOTE : DocStrings From parent
+118: (8)                    return self.modified_rgbas(vmobject, vmobject.get_fill_rgbas())
+119: (4)                def get_mobjects_to_display(self, *args, **kwargs):  # NOTE : DocStrings From parent
+120: (8)                    mobjects = super().get_mobjects_to_display(*args, **kwargs)
+121: (8)                    rot_matrix = self.get_rotation_matrix()
+122: (8)                    def z_key(mob):
+123: (12)                       if not (hasattr(mob, "shade_in_3d") and mob.shade_in_3d):
+124: (16)                           return np.inf
+125: (12)                       # Assign a number to a three dimensional mobjects
+126: (12)                       # based on how close it is to the camera
+127: (12)                       return np.dot(mob.get_z_index_reference_point(), rot_matrix.T)[2]
+128: (8)                    return sorted(mobjects, key=z_key)
+129: (4)                def get_phi(self):
+130: (8)                    """Returns the Polar angle (the angle off Z_AXIS) phi.
+131: (8)                    Returns
+132: (8)                    -------
+133: (8)                    float
+134: (12)                       The Polar angle in radians.
+135: (8)                    """
+136: (8)                    return self.phi_tracker.get_value()
+137: (4)                def get_theta(self):
+138: (8)                    """Returns the Azimuthal i.e the angle that spins the camera around the Z_AXIS.
+139: (8)                    Returns
+140: (8)                    -------
+141: (8)                    float
+142: (12)                       The Azimuthal angle in radians.
+143: (8)                    """
+144: (8)                    return self.theta_tracker.get_value()
+145: (4)                def get_focal_distance(self):
+146: (8)                    """Returns focal_distance of the Camera.
+147: (8)                    Returns
+148: (8)                    -------
+149: (8)                    float
+150: (12)                       The focal_distance of the Camera in MUnits.
+151: (8)                    """
+152: (8)                    return self.focal_distance_tracker.get_value()
+153: (4)                def get_gamma(self):
+154: (8)                    """Returns the rotation of the camera about the vector from the ORIGIN to the Camera.
+155: (8)                    Returns
+156: (8)                    -------
+157: (8)                    float
+158: (12)                       The angle of rotation of the camera about the vector
+159: (12)                       from the ORIGIN to the Camera in radians
+160: (8)                    """
+161: (8)                    return self.gamma_tracker.get_value()
+162: (4)                def get_zoom(self):
+163: (8)                    """Returns the zoom amount of the camera.
+164: (8)                    Returns
+165: (8)                    -------
+166: (8)                    float
+167: (12)                       The zoom amount of the camera.
+168: (8)                    """
+169: (8)                    return self.zoom_tracker.get_value()
+170: (4)                def set_phi(self, value: float):
+171: (8)                    """Sets the polar angle i.e the angle between Z_AXIS and Camera through ORIGIN in radians.
+172: (8)                    Parameters
+173: (8)                    ----------
+174: (8)                    value
+175: (12)                       The new value of the polar angle in radians.
+176: (8)                    """
+177: (8)                    self.phi_tracker.set_value(value)
+178: (4)                def set_theta(self, value: float):
+179: (8)                    """Sets the azimuthal angle i.e the angle that spins the camera around Z_AXIS in radians.
+180: (8)                    Parameters
+181: (8)                    ----------
+182: (8)                    value
+183: (12)                       The new value of the azimuthal angle in radians.
+184: (8)                    """
+185: (8)                    self.theta_tracker.set_value(value)
+186: (4)                def set_focal_distance(self, value: float):
+187: (8)                    """Sets the focal_distance of the Camera.
+188: (8)                    Parameters
+189: (8)                    ----------
+190: (8)                    value
+191: (12)                       The focal_distance of the Camera.
+192: (8)                    """
+193: (8)                    self.focal_distance_tracker.set_value(value)
+194: (4)                def set_gamma(self, value: float):
+195: (8)                    """Sets the angle of rotation of the camera about the vector from the ORIGIN to the Camera.
+196: (8)                    Parameters
+197: (8)                    ----------
+198: (8)                    value
+199: (12)                       The new angle of rotation of the camera.
+200: (8)                    """
+201: (8)                    self.gamma_tracker.set_value(value)
+202: (4)                def set_zoom(self, value: float):
+203: (8)                    """Sets the zoom amount of the camera.
+204: (8)                    Parameters
+205: (8)                    ----------
+206: (8)                    value
+207: (12)                       The zoom amount of the camera.
+208: (8)                    """
+209: (8)                    self.zoom_tracker.set_value(value)
+210: (4)                def reset_rotation_matrix(self):
+211: (8)                    """Sets the value of self.rotation_matrix to
+212: (8)                    the matrix corresponding to the current position of the camera
+213: (8)                    """
+214: (8)                    self.rotation_matrix = self.generate_rotation_matrix()
+215: (4)                def get_rotation_matrix(self):
+216: (8)                    """Returns the matrix corresponding to the current position of the camera.
+217: (8)                    Returns
+218: (8)                    -------
+219: (8)                    np.array
+220: (12)                       The matrix corresponding to the current position of the camera.
+221: (8)                    """
+222: (8)                    return self.rotation_matrix
+223: (4)                def generate_rotation_matrix(self):
+224: (8)                    """Generates a rotation matrix based off the current position of the camera.
+225: (8)                    Returns
+226: (8)                    -------
+227: (8)                    np.array
+228: (12)                       The matrix corresponding to the current position of the camera.
+229: (8)                    """
+230: (8)                    phi = self.get_phi()
+231: (8)                    theta = self.get_theta()
+232: (8)                    gamma = self.get_gamma()
+233: (8)                    matrices = [
+234: (12)                       rotation_about_z(-theta - 90 * DEGREES),
+235: (12)                       rotation_matrix(-phi, RIGHT),
+236: (12)                       rotation_about_z(gamma),
+237: (8)                    ]
+238: (8)                    result = np.identity(3)
+239: (8)                    for matrix in matrices:
+240: (12)                       result = np.dot(matrix, result)
+241: (8)                    return result
+242: (4)                def project_points(self, points: np.ndarray | list):
+243: (8)                    """Applies the current rotation_matrix as a projection
+244: (8)                    matrix to the passed array of points.
+245: (8)                    Parameters
+246: (8)                    ----------
+247: (8)                    points
+248: (12)                       The list of points to project.
+249: (8)                    Returns
+250: (8)                    -------
+251: (8)                    np.array
+252: (12)                       The points after projecting.
+253: (8)                    """
+254: (8)                    frame_center = self.frame_center
+255: (8)                    focal_distance = self.get_focal_distance()
+256: (8)                    zoom = self.get_zoom()
+257: (8)                    rot_matrix = self.get_rotation_matrix()
+258: (8)                    points = points - frame_center
+259: (8)                    points = np.dot(points, rot_matrix.T)
+260: (8)                    zs = points[:, 2]
+261: (8)                    for i in 0, 1:
+262: (12)                       if self.exponential_projection:
+263: (16)                           # Proper projection would involve multiplying
+264: (16)                           # x and y by d / (d-z).  But for points with high
+265: (16)                           # z value that causes weird artifacts, and applying
+266: (16)                           # the exponential helps smooth it out.
+267: (16)                           factor = np.exp(zs / focal_distance)
+268: (16)                           lt0 = zs < 0
+269: (16)                           factor[lt0] = focal_distance / (focal_distance - zs[lt0])
+270: (12)                       else:
+271: (16)                           factor = focal_distance / (focal_distance - zs)
+272: (16)                           factor[(focal_distance - zs) < 0] = 10**6
+273: (12)                       points[:, i] *= factor * zoom
+274: (8)                    return points
+275: (4)                def project_point(self, point: list | np.ndarray):
+276: (8)                    """Applies the current rotation_matrix as a projection
+277: (8)                    matrix to the passed point.
+278: (8)                    Parameters
+279: (8)                    ----------
+280: (8)                    point
+281: (12)                       The point to project.
+282: (8)                    Returns
+283: (8)                    -------
+284: (8)                    np.array
+285: (12)                       The point after projection.
+286: (8)                    """
+287: (8)                    return self.project_points(point.reshape((1, 3)))[0, :]
+288: (4)                def transform_points_pre_display(
+289: (8)                    self,
+290: (8)                    mobject,
+291: (8)                    points,
+292: (4)                ):  # TODO: Write Docstrings for this Method.
+293: (8)                    points = super().transform_points_pre_display(mobject, points)
+294: (8)                    fixed_orientation = mobject in self.fixed_orientation_mobjects
+295: (8)                    fixed_in_frame = mobject in self.fixed_in_frame_mobjects
+296: (8)                    if fixed_in_frame:
+297: (12)                       return points
+298: (8)                    if fixed_orientation:
+299: (12)                       center_func = self.fixed_orientation_mobjects[mobject]
+300: (12)                       center = center_func()
+301: (12)                       new_center = self.project_point(center)
+302: (12)                       return points + (new_center - center)
+303: (8)                    else:
+304: (12)                       return self.project_points(points)
+305: (4)                def add_fixed_orientation_mobjects(
+306: (8)                    self,
+307: (8)                    *mobjects: Mobject,
+308: (8)                    use_static_center_func: bool = False,
+309: (8)                    center_func: Callable[[], np.ndarray] | None = None,
+310: (4)                ):
+311: (8)                    """This method allows the mobject to have a fixed orientation,
+312: (8)                    even when the camera moves around.
+313: (8)                    E.G If it was passed through this method, facing the camera, it
+314: (8)                    will continue to face the camera even as the camera moves.
+315: (8)                    Highly useful when adding labels to graphs and the like.
+316: (8)                    Parameters
+317: (8)                    ----------
+318: (8)                    *mobjects
+319: (12)                       The mobject whose orientation must be fixed.
+320: (8)                    use_static_center_func
+321: (12)                       Whether or not to use the function that takes the mobject's
+322: (12)                       center as centerpoint, by default False
+323: (8)                    center_func
+324: (12)                       The function which returns the centerpoint
+325: (12)                       with respect to which the mobject will be oriented, by default None
+326: (8)                    """
+327: (8)                    # This prevents the computation of mobject.get_center
+328: (8)                    # every single time a projection happens
+329: (8)                    def get_static_center_func(mobject):
+330: (12)                       point = mobject.get_center()
+331: (12)                       return lambda: point
+332: (8)                    for mobject in mobjects:
+333: (12)                       if center_func:
+334: (16)                           func = center_func
+335: (12)                       elif use_static_center_func:
+336: (16)                           func = get_static_center_func(mobject)
+337: (12)                       else:
+338: (16)                           func = mobject.get_center
+339: (12)                       for submob in mobject.get_family():
+340: (16)                           self.fixed_orientation_mobjects[submob] = func
+341: (4)                def add_fixed_in_frame_mobjects(self, *mobjects: Mobject):
+342: (8)                    """This method allows the mobject to have a fixed position,
+343: (8)                    even when the camera moves around.
+344: (8)                    E.G If it was passed through this method, at the top of the frame, it
+345: (8)                    will continue to be displayed at the top of the frame.
+346: (8)                    Highly useful when displaying Titles or formulae or the like.
+347: (8)                    Parameters
+348: (8)                    ----------
+349: (8)                    **mobjects
+350: (12)                       The mobject to fix in frame.
+351: (8)                    """
+352: (8)                    for mobject in extract_mobject_family_members(mobjects):
+353: (12)                       self.fixed_in_frame_mobjects.add(mobject)
+354: (4)                def remove_fixed_orientation_mobjects(self, *mobjects: Mobject):
+355: (8)                    """If a mobject was fixed in its orientation by passing it through
+356: (8)                    :meth:`.add_fixed_orientation_mobjects`, then this undoes that fixing.
+357: (8)                    The Mobject will no longer have a fixed orientation.
+358: (8)                    Parameters
+359: (8)                    ----------
+360: (8)                    mobjects
+361: (12)                       The mobjects whose orientation need not be fixed any longer.
+362: (8)                    """
+363: (8)                    for mobject in extract_mobject_family_members(mobjects):
+364: (12)                       if mobject in self.fixed_orientation_mobjects:
+365: (16)                           del self.fixed_orientation_mobjects[mobject]
+366: (4)                def remove_fixed_in_frame_mobjects(self, *mobjects: Mobject):
+367: (8)                    """If a mobject was fixed in frame by passing it through
+368: (8)                    :meth:`.add_fixed_in_frame_mobjects`, then this undoes that fixing.
+369: (8)                    The Mobject will no longer be fixed in frame.
+370: (8)                    Parameters
+371: (8)                    ----------
+372: (8)                    mobjects
+373: (12)                       The mobjects which need not be fixed in frame any longer.
+374: (8)                    """
+375: (8)                    for mobject in extract_mobject_family_members(mobjects):
+376: (12)                       if mobject in self.fixed_in_frame_mobjects:
+377: (16)                           self.fixed_in_frame_mobjects.remove(mobject)
+
+----------------------------------------
+
+File 7 - . \SANJOYNATHQHENOMENOLOGYGEOMETRIFYINGTRIGONOMETRYCOMBINER_aligner_20_characters_for_pythons_codes.py:
+
+1: (0)              import os
+2: (0)              from datetime import datetime
+3: (0)              def get_file_info(root_folder):
+4: (4)                  file_info_list = []
+5: (4)                  for root, dirs, files in os.walk(root_folder):
+6: (8)                      for file in files:
+7: (12)                         try:
+8: (16)                             # Check if the file is a Python file
+9: (16)                             if file.endswith('.py'):
+10: (20)                                file_path = os.path.join(root, file)
+11: (20)                                # Get file times
+12: (20)                                creation_time = datetime.fromtimestamp(os.path.getctime(file_path))
+13: (20)                                modified_time = datetime.fromtimestamp(os.path.getmtime(file_path))
+14: (20)                                # Get file extension
+15: (20)                                file_extension = os.path.splitext(file)[1].lower()
+16: (20)                                # Append file info to list
+17: (20)                                file_info_list.append([file, file_path, creation_time, modified_time, file_extension, root])
+18: (12)                        except Exception as e:
+19: (16)                            print(f"Error processing file {file}: {e}")
+20: (4)                 # Sort the files by multiple criteria
+21: (4)                 file_info_list.sort(key=lambda x: (x[2], x[3], len(x[0]), x[4]))  # Sort by creation, modification time, name length, extension
+22: (4)                 return file_info_list
+23: (0)             def process_file(file_info_list):
+24: (4)                 combined_output = []
+25: (4)                 for idx, (file_name, file_path, creation_time, modified_time, file_extension, root) in enumerate(file_info_list):
+26: (8)                     with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+27: (12)                        content = f.read()
+28: (12)                        # Remove Python comments and blank lines
+29: (10)                      ###  content = "\n".join([line for line in content.split('\n') if line.strip() and not line.strip().startswith("#")])
+30: (12)                        content = "\n".join([line for line in content.split('\n') if line.strip() ])###and not line.strip().startswith("#")
+31: (12)                        # Replace tabs with spaces
+32: (12)                        content = content.replace('\t', '    ')
+33: (12)                        # Process each line
+34: (12)                        processed_lines = []
+35: (12)                        for i, line in enumerate(content.split('\n')):
+36: (16)                            # Count the number of starting blank spaces
+37: (16)                            leading_spaces = len(line) - len(line.lstrip(' '))
+38: (16)                            # Create the line with line number and leading spaces count
+39: (16)                            line_number_str = f"{i+1}: ({leading_spaces})"
+40: (16)                            # Calculate padding to align the original code at the 61st character
+41: (16)                            padding = ' ' * (20 - len(line_number_str))
+42: (16)                            processed_line = f"{line_number_str}{padding}{line}"
+43: (16)                            processed_lines.append(processed_line)
+44: (12)                        content_with_line_numbers = "\n".join(processed_lines)
+45: (12)                        # Add file listing order and line number
+46: (12)                        combined_output.append(f"File {idx + 1} - {root} \\{file_name}:\n")
+47: (12)                        combined_output.append(content_with_line_numbers)
+48: (12)                        combined_output.append("\n" + "-"*40 + "\n")
+49: (4)                 return combined_output
+50: (0)             # Set the root folder path
+51: (0)             root_folder_path = '.'  # Set this to the desired folder
+52: (0)             # Get file information and process files
+53: (0)             file_info_list = get_file_info(root_folder_path)
+54: (0)             combined_output = process_file(file_info_list)
+55: (0)             # Save the processed data to an output file
+56: (0)             output_file = 'WITHRELPATH_COMMENTSKEPT_SANJOYNATHQHENOMENOLOGYGEOMETRIFYINGTRIGONOMETRY_combined_python_files_20_chars.txt'
+57: (0)             with open(output_file, 'w', encoding='utf-8') as logfile:
+58: (4)                 logfile.write("\n".join(combined_output))
+59: (0)             print(f"Processed file info logged to {output_file}")
+
+----------------------------------------
