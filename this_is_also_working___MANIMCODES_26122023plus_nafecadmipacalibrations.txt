@@ -1,0 +1,68 @@
+from manim import *
+import random
+
+class ValueTrackerExample___fornafecadsmipa_INDIVIDUALS_AND_SOCIETY__60repeats_complicated_society(Scene):
+    def construct(self):
+        # Create a text at the top that fits within the screen width
+        text = Text("SANJOY NATH MANIMATIONS NAFECADMIPA ORDERING QHENOMENOLOGY").scale_to_fit_width(config.frame_width - 1).to_edge(UP)
+        self.add(text)  # Ensure the text remains on the screen
+        
+        # Create a text below the first text
+        text_below = Text("N>A>F>E>C>A>D>M>I>P>A (JUXTAPOSITION CREATES DIFFERENT ORDERS IN NUMBERING)").scale_to_fit_width(config.frame_width - 1).next_to(text, DOWN)
+        self.add(text_below)  # Ensure the text remains on the screen
+        
+        # Add a link text
+        textLINKS = Text("https://sanjoynathgeometrifyingtrigonometry.blogspot.com/2024/10/nafcadmipa-or-nafcaia.html").scale_to_fit_width(config.frame_width - 1).next_to(text_below, DOWN)
+        self.add(textLINKS)  # Ensure the text remains on the screen
+        
+        number_line1 = NumberLine(include_numbers=True)
+        number_line2 = NumberLine(include_numbers=True).shift(DOWN * 2)  # Shifted down to make space for the second number line
+        pointerDNS = Vector(DOWN)
+        pointerUPS = Vector(UP)
+        label_DNS = MathTex("NAFECADMIPA(INDIVIDUAL)").add_updater(lambda m: m.next_to(pointerDNS, UP))
+        label_UPS = MathTex("NAFECADMIPA(SOCIETY)").add_updater(lambda m: m.next_to(pointerUPS, DOWN))
+        tracker = ValueTracker(0)
+        tracker_ANOTHER = ValueTracker(0)
+        
+        pointerDNS.add_updater(
+            lambda m: m.next_to(
+                number_line1.n2p(tracker.get_value()),
+                UP
+            )
+        )
+        pointerUPS.add_updater(
+            lambda m: m.next_to(
+                number_line2.n2p(tracker_ANOTHER.get_value()),
+                DOWN
+            )
+        )
+        
+        self.add(number_line1, number_line2, pointerDNS, pointerUPS, label_DNS, label_UPS)
+
+        t1_tracker = ValueTracker(0)
+        t2_tracker = ValueTracker(0)
+
+        t1_label = always_redraw(lambda: MathTex(f"t1={t1_tracker.get_value():.2f}").next_to(text_below, DOWN))
+        t2_label = always_redraw(lambda: MathTex(f"t2={t2_tracker.get_value():.2f}").next_to(t1_label, RIGHT))
+
+        self.add(t1_label, t2_label)
+        
+        for _ in range(60):
+            new_value1 = random.uniform(-10, 10)
+            new_value2 = random.uniform(-10, 10)
+            t1_value = random.uniform(0.5, 1.5)
+            t2_value = t1_value * random.uniform(0.8, 1.2)
+
+            self.play(tracker.animate.set_value(new_value1), run_time=t1_value)
+            self.play(t1_tracker.animate.set_value(t1_value), run_time=0.5)
+            self.wait(0.5)
+
+            self.play(tracker_ANOTHER.animate.set_value(new_value2), run_time=t2_value)
+            self.play(t2_tracker.animate.set_value(t2_value), run_time=0.5)
+            self.wait(0.5)
+
+# # # # Create an instance of the scene to trigger the construct method
+# # # scene = ValueTrackerExample___fornafecadsmipa_INDIVIDUALS_AND_SOCIETY__11repeats_complicated_convergances()
+# # # scene.render()
+
+# # # print("ValueTracker animation has been rendered and repeated with dynamic variables t1 and t2.")
