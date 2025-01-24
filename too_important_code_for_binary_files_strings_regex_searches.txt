@@ -1,0 +1,298 @@
+
+
+        static List<string> ExtractContiguousBytes(string text)
+        {
+            //////Regex allowedChars = new Regex(@"[0-9a-zA-Z\.\+\-\*/=#%&@{}\(\)]+");
+            //////return allowedChars.Matches(text).Select(m => m.Value).ToList();
+            ///
+
+            Regex allowedChars = new Regex(@"[0-9a-zA-Z\.\+\-\*/=#%&@{}\(\)]+");
+            List<string> matches = new List<string>();
+            foreach (Match match in allowedChars.Matches(text))
+            {
+                matches.Add(match.Value);
+            }
+            return matches;
+
+        }// static List<string> ExtractContiguousBytes(string text)
+
+        static Dictionary<string, int> GetFrequencyReport(List<string> tokens)
+        {
+            return tokens.GroupBy(s => s).ToDictionary(g => g.Key, g => g.Count());
+        }// static Dictionary<string, int> GetFrequencyReport(List<string> tokens)
+
+        static void SaveReport(string filePath, List<string> report)
+        {
+            File.WriteAllLines(filePath, report);
+        }// static void SaveReport(string filePath, List<string> report)
+
+        static void SaveFrequencyReport(string filePath, Dictionary<string, int> frequencyReport)
+        {
+            using (StreamWriter writer = new StreamWriter(filePath))
+            {
+                foreach (var item in frequencyReport)
+                {
+                    writer.WriteLine($"{item.Key}: {item.Value}");
+                }// foreach (var item in frequencyReport)
+            }// using (StreamWriter writer = new StreamWriter(filePath))
+
+        }// static void SaveFrequencyReport(string filePath, Dictionary<string, int> frequencyReport)
+
+        private void ToolStripMenuItem______TOKENS_FREQUENCY_WITH_CONTIGUITY_READABLES_CHUNKS_WITH_BYTES_START_FINAL_POSITONS_Click(object sender, EventArgs e)
+        {
+            string inputFilePath = string.Empty;
+
+            // Open file dialog to choose the input file
+            using (OpenFileDialog openFileDialog = new OpenFileDialog())
+            {
+                openFileDialog.Filter = "All Files|*.*|PDF Files|*.pdf|Text Files|*.txt";
+                openFileDialog.Title = "Select a File";
+                if (openFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    inputFilePath = openFileDialog.FileName;
+                }
+                else
+                {
+                    Console.WriteLine("No file selected. Exiting...");
+                    return;
+                }
+            }// using (OpenFileDialog openFileDialog = new OpenFileDialog())
+
+            try
+            {
+                byte[] byteBuffer;
+                using (FileStream fs = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read))
+                {
+                    byteBuffer = new byte[fs.Length];
+                    using (BinaryReader reader = new BinaryReader(fs))
+                    {
+                        // Populate the whole content to the bytes buffer
+                        reader.Read(byteBuffer, 0, byteBuffer.Length);
+                    }// using (BinaryReader reader = new BinaryReader(fs))
+                }// using (FileStream fs = new FileStream(inputFilePath, FileMode.Open, FileAccess.Read))
+
+                long bufferLength = byteBuffer.Length;
+                List<string> extractedStrings = new List<string>();
+                StringBuilder currentString = new StringBuilder();
+                List<(long start, long end)> bytePositions = new List<(long start, long end)>();
+
+                // Define the allowed characters using a regular expression
+                //  Regex allowedChars = new Regex(@"[0-9a-zA-Z\.\+\-\*/=]");
+                // Regex allowedChars = new Regex(@"[0-9a-zA-Z\.\+\-\*/=#][}{()%&@]");
+                ////// Regex allowedChars = new Regex(@"[0-9a-zA-Z\.\+\-\*/=#%&@]");
+                ///
+
+
+
+
+                // Regex allowedChars = new Regex(@"[0-9a-zA-Z\.\+\-\*/=#%&@{}\(\)]");
+                Regex allowedChars = new Regex(@"[0-9a-zA-Z\.\+\-\*/=#%&@{}\(\)]+");
+
+                long startPosition = -1;
+
+                for (long i = 0; i < bufferLength; i++)
+                {
+                    char currentChar = (char)byteBuffer[i];
+
+                    if (allowedChars.IsMatch(currentChar.ToString()))
+                    {
+                        if (startPosition == -1)
+                        {
+                            startPosition = i;
+                        }//  if (startPosition == -1)
+
+                        currentString.Append(currentChar);
+                    }
+                    else
+                    {
+                        if (currentString.Length > 0)
+                        {
+                            extractedStrings.Add(currentString.ToString());
+                            bytePositions.Add((startPosition, i - 1));
+                            currentString.Clear();
+                            startPosition = -1;
+                        }// if (currentString.Length > 0)
+
+                    }// if (allowedChars.IsMatch(currentChar.ToString()))
+                }// for (long i = 0; i < bufferLength; i++)
+
+                // Add the last string if any
+                if (currentString.Length > 0)
+                {
+                    extractedStrings.Add(currentString.ToString());
+                    bytePositions.Add((startPosition, bufferLength - 1));
+                }// if (currentString.Length > 0)
+
+
+                // Prepare the reports
+                string reportFilePath = inputFilePath + "___contiguous_bytes_report.txt";
+                File.WriteAllLines(reportFilePath, extractedStrings);
+
+                // Frequency report
+                var frequencyReport = extractedStrings.GroupBy(s => s)
+                                                      .Select(g => new { Token = g.Key, Count = g.Count() })
+                                                      .OrderByDescending(x => x.Count)
+                                                      .ThenBy(x => x.Token)
+                                                      .ToList();
+
+                string frequencyReportPath = inputFilePath + "___frequency_report.txt";
+                using (StreamWriter writer = new StreamWriter(frequencyReportPath))
+                {
+                    foreach (var item in frequencyReport)
+                    {
+                        writer.WriteLine($"{item.Token}: {item.Count}");
+                    }// foreach (var item in frequencyReport)
+
+                }//using (StreamWriter writer = new StreamWriter(frequencyReportPath))
+
+
+
+                // Byte positions report
+                string bytePositionsReportPath = inputFilePath + "___byte_positions_report.txt";
+                using (StreamWriter writer = new StreamWriter(bytePositionsReportPath))
+                {
+                    foreach (var position in bytePositions)
+                    {
+                        writer.WriteLine($"Start: {position.start}, End: {position.end}");
+                    }// foreach (var position in bytePositions)
+                }// using (StreamWriter writer = new StreamWriter(bytePositionsReportPath))
+
+                Console.WriteLine($"The reports have been prepared and saved to {reportFilePath}, {frequencyReportPath}, and {bytePositionsReportPath}");
+
+                System.Windows.Forms.MessageBox.Show($"The reports have been prepared and saved to {reportFilePath}, {frequencyReportPath}, and {bytePositionsReportPath}");
+
+
+
+
+
+
+
+                string fileContent = System.Text.Encoding.UTF8.GetString(byteBuffer);
+
+                //////// Define the regex patterns
+                //////Regex guidPattern = new Regex(@"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b");
+                //////Regex emailPattern = new Regex(@"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b");
+                //////Regex datetimePattern = new Regex(@"\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\b");
+                ///
+                // Define the regex patterns
+                ///      Regex guidPattern = new Regex(@"\(\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b\)");
+
+
+                //////The file you uploaded contains a frequency report of various strings from binary files. The strings you mentioned, such as (466ef472 - 27ec - 494c - 82d02f52911c6a7c), (46d6e5c7 - 2e71 - 4e44 - 91858056aca2f6e9), (4717cccf - f6a9 - 45e8 - 9656dcdf57d5ac78), and(481cb105 - 23d0 - 4a78 - 906497bf4650e10b), do resemble GUIDs(Globally Unique Identifiers).
+                //////Your regular expression pattern guidPattern = new Regex(@"\(\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b\)"); is designed to match GUIDs. However, it seems like the pattern might not be capturing these strings correctly.
+                //////To ensure these strings are recognized as GUIDs, you can modify your regular expression slightly.Here is an updated version:
+
+                //Regex guidPattern = new Regex(@"\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\)");
+                //  Regex guidPattern = new Regex(@"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b");
+                Regex guidPattern = new Regex(@"\b[0-9a-fA-F]+-[0-9a-fA-F]+-[0-9a-fA-F]+\b");
+
+
+                Regex emailPattern = new Regex(@"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b");
+                Regex datetimePattern = new Regex(@"\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\b");
+
+  
+                // Extract contiguous bytes with specific char values
+                List<string> extractedStringsutf8forotherpatterns = ExtractContiguousBytes(fileContent);
+
+                // Identify GUID-like strings
+                List<string> guidLikeStrings = extractedStringsutf8forotherpatterns.Where(s => guidPattern.IsMatch(s)).ToList();
+
+                // Identify email-like strings
+                List<string> emailLikeStrings = extractedStringsutf8forotherpatterns.Where(s => emailPattern.IsMatch(s)).ToList();
+
+                // Identify date-time like strings
+                List<string> datetimeLikeStrings = extractedStringsutf8forotherpatterns.Where(s => datetimePattern.IsMatch(s)).ToList();
+
+                // Generate frequency reports
+                var guidFrequencyReport = GetFrequencyReport(guidLikeStrings);
+                var emailFrequencyReport = GetFrequencyReport(emailLikeStrings);
+                var datetimeFrequencyReport = GetFrequencyReport(datetimeLikeStrings);
+
+                // Save the reports to files
+                SaveReport(inputFilePath + "_guid_like_strings_report.txt", guidLikeStrings);
+                SaveReport(inputFilePath + "_email_like_strings_report.txt", emailLikeStrings);
+                SaveReport(inputFilePath + "_datetime_like_strings_report.txt", datetimeLikeStrings);
+                SaveFrequencyReport(inputFilePath + "_guid_frequency_report.txt", guidFrequencyReport);
+                SaveFrequencyReport(inputFilePath +  "_email_frequency_report.txt", emailFrequencyReport);
+                SaveFrequencyReport(inputFilePath + "_datetime_frequency_report.txt", datetimeFrequencyReport);
+
+                Console.WriteLine("The reports have been prepared and saved.");
+                System.Windows.Forms.MessageBox.Show("The GUID , datetimes, emails utf8 types regex reports reports have been prepared and saved.");
+
+
+
+
+
+
+
+
+                //////// Byte positions report
+                //////string bytePositionsReportPath = inputFilePath + "___byte_positions_report.txt";
+                //////using (StreamWriter writer = new StreamWriter(bytePositionsReportPath))
+                //////{
+                //////    foreach (var position in bytePositions)
+                //////    {
+                //////        writer.WriteLine($"Start: {position.start}, End: {position.end}");
+                //////    }// foreach (var position in bytePositions)
+                //////}// using (StreamWriter writer = new StreamWriter(bytePositionsReportPath))
+
+                if (inputFilePath.ToUpper().EndsWith(".PDF"))
+                {
+
+ 
+                // Extract and log /Highlight and /QuadPoints annotations
+                using (StreamWriter logWriter = new StreamWriter(inputFilePath + "___annotations_report.txt"))
+                {
+                    PdfReader reader = new PdfReader(inputFilePath);
+                    for (int pageNumber = 1; pageNumber <= reader.NumberOfPages; pageNumber++)
+                    {
+                        PdfDictionary pageDict = reader.GetPageN(pageNumber);
+                        if (pageDict == null) { continue; }
+
+                        PdfArray annots = pageDict.GetAsArray(PdfName.ANNOTS);
+                        if (annots != null)
+                        {
+                            foreach (PdfObject annot in annots.ArrayList)
+                            {
+                                PdfDictionary annotDict = (PdfDictionary)PdfReader.GetPdfObject(annot);
+                                if (PdfName.HIGHLIGHT.Equals(annotDict.GetAsName(PdfName.SUBTYPE)))
+                                {
+                                    PdfArray quadPoints = annotDict.GetAsArray(PdfName.QUADPOINTS);
+                                    if (quadPoints != null)
+                                    {
+                                        logWriter.WriteLine($"Page {pageNumber} Highlight Annotation:");
+                                        for (int i = 0; i < quadPoints.Size; i += 8)
+                                        {
+                                            float x1 = quadPoints.GetAsNumber(i).FloatValue;
+                                            float y1 = quadPoints.GetAsNumber(i + 1).FloatValue;
+                                            float x2 = quadPoints.GetAsNumber(i + 2).FloatValue;
+                                            float y2 = quadPoints.GetAsNumber(i + 3).FloatValue;
+                                            float x3 = quadPoints.GetAsNumber(i + 4).FloatValue;
+                                            float y3 = quadPoints.GetAsNumber(i + 5).FloatValue;
+                                            float x4 = quadPoints.GetAsNumber(i + 6).FloatValue;
+                                            float y4 = quadPoints.GetAsNumber(i + 7).FloatValue;
+                                            logWriter.WriteLine($"QuadPoints: {x1}, {y1}, {x2}, {y2}, {x3}, {y3}, {x4}, {y4}");
+                                        }// for (int i = 0; i < quadPoints.Size; i += 8)
+
+                                    }// if (quadPoints != null)
+
+                                }// if (PdfName.HIGHLIGHT.Equals(annotDict.GetAsName(PdfName.SUBTYPE)))
+                            }// foreach (PdfObject annot in annots.ArrayList)
+                        }// if (annots != null)
+                    }// for (int pageNumber = 1; pageNumber <= reader.NumberOfPages; pageNumber++) 
+                }// using (StreamWriter logWriter = new StreamWriter(inputFilePath + "___annotations_report.txt"))
+
+
+                Console.WriteLine($"The reports have been prepared and saved to {reportFilePath}, {frequencyReportPath}, {bytePositionsReportPath}, and {inputFilePath}___annotations_report.txt");
+                System.Windows.Forms.MessageBox.Show($"The reports have been prepared and saved to {reportFilePath}, {frequencyReportPath}, {bytePositionsReportPath}, and {inputFilePath}___annotations_report.txt");
+
+                }//if(inputFilePath.ToUpper().EndsWith(".PDF"))
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("An error occurred: " + ex.Message + "\r\n" + ex.StackTrace.ToString());
+            }// catch (Exception ex)
+
+        }//private void ToolStripMenuItem______TOKENS_FREQUENCY_WITH_CONTIGUITY_READABLES_CHUNKS_WITH_BYTES_START_FINAL_POSITONS_Click(object sender, EventArgs e)
+
